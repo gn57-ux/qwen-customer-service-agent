@@ -1,0 +1,26 @@
+{
+  "name": "mastra-agent",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "mastra dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "allowScripts": {
+    "esbuild": true
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^4.0.19",
+    "@mastra/core": "^1.52.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "mastra": "^1.20.1",
+    "typescript": "^7.0.2"
+  }
+}

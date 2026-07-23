@@ -1,0 +1,36 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Node 和 Mastra
+node_modules/
+.mastra/
+
+# 密钥
+.env
+*.env
+!.env.example
+
+# 不上传基础模型和 LLaMA Factory
+models/
+LlamaFactory/
+*.gguf
+
+# 不上传训练检查点
+**/checkpoint-*/
+**/optimizer.pt
+**/scheduler.pt
+**/rng_state.pth
+
+# 临时文件
+*.zip
+logs/
+*.log
+.vscode/
+.idea/
+.DS_Store
+Thumbs.dbgithub-upload-files/
+
+/github-upload-files/

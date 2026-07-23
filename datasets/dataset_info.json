@@ -1,0 +1,16 @@
+{
+  "customer_service_smoke_20": {
+    "file_name": "customer-service-smoke-20.json",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant",
+      "system_tag": "system"
+    }
+  }
+}

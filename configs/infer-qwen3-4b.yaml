@@ -1,0 +1,15 @@
+model_name_or_path: Z:/AI/customer-service-ai/models/Qwen3-4B-Instruct-2507
+trust_remote_code: true
+
+template: qwen3_nothink
+infer_backend: huggingface
+infer_dtype: bfloat16
+
+quantization_method: bitsandbytes
+quantization_bit: 4
+double_quantization: true
+quantization_type: nf4
+
+max_new_tokens: 256
+temperature: 0.7
+top_p: 0.8
