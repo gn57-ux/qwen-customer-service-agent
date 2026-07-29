@@ -1,0 +1,76 @@
+# 正式 QLoRA 训练配置草案（尚未执行训练）
+#
+# Qwen/Qwen3-8B
+# Runtime: Ubuntu 22.04, Python 3.12, PyTorch 2.7.1+cu126,
+# LlamaFactory 0.9.5, bitsandbytes 0.49.2, RTX 4090 24GB.
+#
+# 数据集：datasets/customer-service-train-640.json（640 条）
+#         datasets/customer-service-validation-80.json（80 条，仅用于验证）
+# 严禁使用：datasets/customer-service-test-80.json
+#         该文件已在 dataset_info.json 中注册，仅供离线评测脚本加载，
+#         不得出现在本文件的 dataset / eval_dataset 字段中。
+#
+# 输出目录与 Smoke 产物完全分离：
+#   Smoke:      /workspace/training-artifacts/qwen3-8b/customer-service-smoke
+#   Production: /workspace/training-artifacts/qwen3-8b/customer-service-production-v1
+# overwrite_output_dir 保持 false，避免误覆盖既有 checkpoint。
+
+### model
+model_name_or_path: /workspace/models/Qwen3-8B
+trust_remote_code: true
+quantization_bit: 4
+quantization_method: bnb
+quantization_type: nf4
+double_quantization: true
+compute_dtype: bfloat16
+
+### method
+stage: sft
+do_train: true
+do_eval: true
+finetuning_type: lora
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target: all
+
+### dataset
+dataset: customer_service_train_640
+eval_dataset: customer_service_validation_80
+dataset_dir: /workspace/qwen-customer-service-agent/datasets
+template: qwen3_nothink
+cutoff_len: 1536
+overwrite_cache: true
+preprocessing_num_workers: 4
+dataloader_num_workers: 0
+
+### output
+output_dir: /workspace/training-artifacts/qwen3-8b/customer-service-production-v1
+logging_steps: 5
+plot_loss: true
+overwrite_output_dir: false
+save_only_model: false
+report_to: none
+
+### train
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 8
+learning_rate: 1.0e-4
+num_train_epochs: 3.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+bf16: true
+gradient_checkpointing: true
+ddp_timeout: 180000000
+# 640 条 / (1 × 8) = 80 optimizer steps per epoch，3 epoch 共约 240 步。
+
+### eval & best checkpoint
+per_device_eval_batch_size: 1
+eval_strategy: steps
+eval_steps: 20
+save_strategy: steps
+save_steps: 20
+save_total_limit: 3
+load_best_model_at_end: true
+metric_for_best_model: eval_loss
+greater_is_better: false
