@@ -113,7 +113,7 @@
     "train": {
       "file_name": "customer-service-train-640.json",
       "count": 640,
-      "sha256": "25aa1037e31e2985f4598cbb60b11f144a2571cfef892e5816de12fe3a011bed"
+      "sha256": "76464f6b2da0be60d30e796d566e80f7c5fb3597d61020c5c36d49a841e4d5e7"
     },
     "validation": {
       "file_name": "customer-service-validation-80.json",

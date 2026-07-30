@@ -41,7 +41,7 @@ lora_target: all
 
 ### dataset
 # 数据集版本绑定（customer-service-2026-07-v1，随机种子 20260729）：
-#   train      640 条  sha256 25aa1037e31e2985f4598cbb60b11f144a2571cfef892e5816de12fe3a011bed
+#   train      640 条  sha256 76464f6b2da0be60d30e796d566e80f7c5fb3597d61020c5c36d49a841e4d5e7
 #   validation  80 条  sha256 d8cbcf9a0cbf303f1340b36594f66308ebaf4487650a605c509267bb8226c2e8
 #   test        80 条  sha256 7baa23aec2e35c4744d2f2cf8bccf3b65b773f678d3244caf867551b8a8a8406
 # 开训前用 shasum -a 256 datasets/customer-service-*.json 逐一核对；
