@@ -24,6 +24,8 @@
       "content_tag": "content",
       "user_tag": "user",
       "assistant_tag": "assistant",
+      "observation_tag": "observation",
+      "function_tag": "function_call",
       "system_tag": "system"
     }
   },
@@ -38,6 +40,8 @@
       "content_tag": "content",
       "user_tag": "user",
       "assistant_tag": "assistant",
+      "observation_tag": "observation",
+      "function_tag": "function_call",
       "system_tag": "system"
     }
   },
@@ -52,6 +56,8 @@
       "content_tag": "content",
       "user_tag": "user",
       "assistant_tag": "assistant",
+      "observation_tag": "observation",
+      "function_tag": "function_call",
       "system_tag": "system"
     }
   }

@@ -39,6 +39,7 @@ RANDOM_SEED = 20260729
 DATASET_VERSION = "customer-service-2026-07-v1"
 CREATED_AT = "2026-07-29T00:00:00+08:00"
 BASE_MODEL = "Qwen/Qwen3-8B"
+BASE_MODEL_REVISION = "b968826d9c46dd6066d109eabc6255188de91218"
 
 EXPECTED_SPLIT_COUNT = {"train": 640, "validation": 80, "test": 80}
 EXPECTED_CATEGORY_COUNT = {
@@ -132,12 +133,30 @@ def main():
         "expected_tool_count": dict(
             Counter(i["expected_tool"] for i in items if i.get("expected_tool"))
         ),
-        "tool_result_grounded_count": sum(1 for i in items if i["tool_result_grounded"]),
+        "observation_role": {
+            "role_name": "observation",
+            "tool_result_count": sum(1 for i in items if i["tool_result_grounded"]),
+            "rag_result_count": sum(1 for i in items if i["rag_result_grounded"]),
+            "records_with_observation": sum(1 for i in items if i["observation_count"] > 0),
+            "encoded_as": (
+                "LLaMA Factory v0.9.5 qwen3_nothink.format_observation → "
+                "<|im_start|>user\n<tool_response>\n{content}\n</tool_response><|im_end|>\n"
+                "<|im_start|>assistant\n"
+            ),
+            "loss_masked": True,
+            "rationale": (
+                "工具与知识库返回一律使用 observation 角色，由框架生成 <tool_response> 包裹；"
+                "普通 user 轮无法伪造该包裹，模型因此能在协议层区分可信工具输出与用户输入。"
+                "observation 属于 source，label=IGNORE_INDEX，不计入损失。"
+            ),
+            "verified_by": "scripts/verify_template_encoding.py --jinja（与仓库内 Qwen3 chat_template.jinja 逐字符一致）",
+        },
         "multi_turn_count": sum(1 for i in items if len(i["turns"]) > 2),
         "system_prompt_count": counter_by("system_key"),
         "source": "人工编写（Anthropic Claude 辅助起草，作者逐条复核），未使用真实客服会话、未抓取第三方数据",
         "license": "CC-BY-4.0（仅限本项目训练与评测使用，不含任何真实用户数据）",
         "base_model": BASE_MODEL,
+        "base_model_revision": BASE_MODEL_REVISION,
         "random_seed": RANDOM_SEED,
         "generation_method": (
             "按类别/场景矩阵人工撰写 → 固定种子洗牌 → 审计脚本校验；"
@@ -150,7 +169,7 @@ def main():
             "system_prompt": "身份、规则与越权边界",
             "note": (
                 "订单类样本只训练行为，不训练动态事实；"
-                "具体订单状态仅出现在用户轮的 [订单系统返回] 块中，assistant 只做有依据的转述。"
+                "具体订单状态仅出现在 observation 角色的 [订单系统返回] 块中，assistant 只做有依据的转述。"
             ),
         },
         "reserved_order_ids_excluded": list(RESERVED_ORDER_IDS),

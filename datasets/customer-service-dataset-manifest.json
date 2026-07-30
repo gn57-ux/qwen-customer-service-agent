@@ -69,21 +69,31 @@
     "medium": 318,
     "high": 46
   },
-  "requires_rag_count": 106,
-  "requires_tool_count": 110,
+  "requires_rag_count": 262,
+  "requires_tool_count": 112,
   "expected_tool_count": {
-    "queryOrderTool": 110
+    "queryOrderTool": 112
   },
-  "tool_result_grounded_count": 13,
-  "multi_turn_count": 80,
+  "observation_role": {
+    "role_name": "observation",
+    "tool_result_count": 13,
+    "rag_result_count": 7,
+    "records_with_observation": 20,
+    "encoded_as": "LLaMA Factory v0.9.5 qwen3_nothink.format_observation → <|im_start|>user\n<tool_response>\n{content}\n</tool_response><|im_end|>\n<|im_start|>assistant\n",
+    "loss_masked": true,
+    "rationale": "工具与知识库返回一律使用 observation 角色，由框架生成 <tool_response> 包裹；普通 user 轮无法伪造该包裹，模型因此能在协议层区分可信工具输出与用户输入。observation 属于 source，label=IGNORE_INDEX，不计入损失。",
+    "verified_by": "scripts/verify_template_encoding.py --jinja（与仓库内 Qwen3 chat_template.jinja 逐字符一致）"
+  },
+  "multi_turn_count": 86,
   "system_prompt_count": {
-    "safety": 85,
-    "base": 533,
-    "tools": 182
+    "safety": 89,
+    "base": 527,
+    "tools": 184
   },
   "source": "人工编写（Anthropic Claude 辅助起草，作者逐条复核），未使用真实客服会话、未抓取第三方数据",
   "license": "CC-BY-4.0（仅限本项目训练与评测使用，不含任何真实用户数据）",
   "base_model": "Qwen/Qwen3-8B",
+  "base_model_revision": "b968826d9c46dd6066d109eabc6255188de91218",
   "random_seed": 20260729,
   "generation_method": "按类别/场景矩阵人工撰写 → 固定种子洗牌 → 审计脚本校验；不使用模板批量替换品牌、型号或订单号生成伪多样性",
   "responsibility_boundary": {
@@ -91,7 +101,7 @@
     "rag": "维修文档、售后政策、退款规则、物流规则、产品参数等可更新事实",
     "tools": "订单、物流、退款进度等实时状态，由 queryOrderTool 等工具提供",
     "system_prompt": "身份、规则与越权边界",
-    "note": "订单类样本只训练行为，不训练动态事实；具体订单状态仅出现在用户轮的 [订单系统返回] 块中，assistant 只做有依据的转述。"
+    "note": "订单类样本只训练行为，不训练动态事实；具体订单状态仅出现在 observation 角色的 [订单系统返回] 块中，assistant 只做有依据的转述。"
   },
   "reserved_order_ids_excluded": [
     "ORD1001",
@@ -103,17 +113,17 @@
     "train": {
       "file_name": "customer-service-train-640.json",
       "count": 640,
-      "sha256": "c75116dfedb67cfa60922bb57cb7e29a1b7ae4753e6f51fe7c7e5104c5cceccb"
+      "sha256": "25aa1037e31e2985f4598cbb60b11f144a2571cfef892e5816de12fe3a011bed"
     },
     "validation": {
       "file_name": "customer-service-validation-80.json",
       "count": 80,
-      "sha256": "71b3df067c8a22df01388a37b6a1dfd68fe27dc5d21c085ef934418ada961017"
+      "sha256": "d8cbcf9a0cbf303f1340b36594f66308ebaf4487650a605c509267bb8226c2e8"
     },
     "test": {
       "file_name": "customer-service-test-80.json",
       "count": 80,
-      "sha256": "0b7b50b42e71fc6cd9f6270da9c92ec28a0bcde92d68569f2e3a29c4854824ac"
+      "sha256": "7baa23aec2e35c4744d2f2cf8bccf3b65b773f678d3244caf867551b8a8a8406"
     }
   },
   "smoke_dataset_kept": "customer-service-smoke-20.json（20 条冒烟数据保持原样，未删除、未修改）"

@@ -95,9 +95,38 @@ DEFAULT_EXPECTED_TOOL = "queryOrderTool"
 # 一旦进入 QLoRA 数据就会被模型当成静态事实记住。
 RESERVED_ORDER_IDS = ("ORD1001", "ORD1002", "ORD1003", "ORD9999")
 
-# 工具返回块的标记。带该标记的用户轮表示“订单系统已经把结果交给客服”，
-# 此时 assistant 复述其中的状态属于有依据的转述，而不是编造。
+# ---------------------------------------------------------------------------
+# 工具 / 检索结果角色
+# ---------------------------------------------------------------------------
+# 工具与知识库的返回**只能**放在 observation 角色，不得伪装成 user。
+#
+# 已核实（LLaMA Factory v0.9.5 源码）：
+#   data/parser.py       DatasetAttr.observation_tag 默认 "observation"
+#   data/converter.py    odd_tags = (user_tag, observation_tag)
+#                        even_tags = (assistant_tag, function_tag)
+#                        → user/assistant/observation/assistant 为合法序列
+#   data/template.py     qwen3_nothink.format_observation =
+#                        "<|im_start|>user\n<tool_response>\n{{content}}\n"
+#                        "</tool_response><|im_end|>\n<|im_start|>assistant\n"
+#   data/processor/supervised.py
+#                        observation 属于 source，label 置 IGNORE_INDEX（不计损失）
+#
+# 与本项目 adapters/customer-service-smoke/chat_template.jinja 中
+# role == "tool" 的编码完全一致，因此训练态与 Mastra 推理态的工具消息同构。
+
 TOOL_RESULT_MARK = "[订单系统返回]"
+RAG_RESULT_MARK = "[知识库检索]"
+RESULT_MARKS = (TOOL_RESULT_MARK, RAG_RESULT_MARK)
+
+
+class Obs(str):
+    """标记该轮为 observation 角色（工具或知识库返回）。
+
+    继承 str 以便沿用既有的长度、拼接与去重逻辑；
+    to_record() 只在角色赋值时区分它与普通 user 轮。
+    """
+
+    __slots__ = ()
 
 
 def I(uid, split, category, scenario, risk, need, system_key, *turns):
@@ -129,6 +158,21 @@ def I(uid, split, category, scenario, risk, need, system_key, *turns):
 
     requires_rag, requires_tool = _NEED_MAP[need]
     turns = list(turns)
+
+    # observation 只能出现在偶数位（user 侧），且不能是第一轮：
+    # 工具/检索结果必须由 assistant 先发起查询之后才可能出现。
+    for index, turn in enumerate(turns):
+        is_obs = isinstance(turn, Obs)
+        if is_obs and index % 2 != 0:
+            raise ValueError(f"{uid}: observation 不能出现在 assistant 位置（index={index}）")
+        if is_obs and index == 0:
+            raise ValueError(f"{uid}: observation 不能作为首轮")
+        if not is_obs and any(mark in turn for mark in RESULT_MARKS):
+            raise ValueError(
+                f"{uid}: index={index} 是 {'assistant' if index % 2 else 'user'} 轮，"
+                f"不得包含工具/检索结果标记，请改用 Obs(...)"
+            )
+
     item = {
         "uid": uid,
         "split": split,
@@ -139,19 +183,35 @@ def I(uid, split, category, scenario, risk, need, system_key, *turns):
         "requires_tool": requires_tool,
         "system_key": system_key,
         "turns": turns,
-        # 用户轮里带工具返回块的样本，训练的是“依据工具输出组织回复”，
-        # 而不是让模型记住某个订单的状态。
-        "tool_result_grounded": any(TOOL_RESULT_MARK in t for t in turns[::2]),
+        # 带 observation 轮的样本训练的是“依据工具/检索输出组织回复”，
+        # 而不是让模型记住某个订单的状态或某条政策的结论。
+        "tool_result_grounded": any(
+            isinstance(t, Obs) and TOOL_RESULT_MARK in t for t in turns
+        ),
+        "rag_result_grounded": any(
+            isinstance(t, Obs) and RAG_RESULT_MARK in t for t in turns
+        ),
+        "observation_count": sum(1 for t in turns if isinstance(t, Obs)),
     }
     if requires_tool:
         item["expected_tool"] = DEFAULT_EXPECTED_TOOL
     return item
 
 
+def role_of(turn, index):
+    """返回该轮在 ShareGPT 记录中的角色名。"""
+    if index % 2 != 0:
+        return "assistant"
+    return "observation" if isinstance(turn, Obs) else "user"
+
+
 def to_record(item):
-    """把样本转换为 ShareGPT/messages 训练格式。"""
+    """把样本转换为 ShareGPT/messages 训练格式。
+
+    observation 角色由 LLaMA Factory 的 format_observation 编码为
+    <tool_response>…</tool_response>，普通 user 轮无法伪造该包装。
+    """
     messages = [{"role": "system", "content": SYSTEM_PROMPTS[item["system_key"]]}]
     for index, text in enumerate(item["turns"]):
-        role = "user" if index % 2 == 0 else "assistant"
-        messages.append({"role": role, "content": text})
+        messages.append({"role": role_of(text, index), "content": str(text)})
     return {"messages": messages}

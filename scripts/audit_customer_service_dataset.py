@@ -31,6 +31,11 @@
     20. 数据源模块与已生成 JSON 的往返一致性
     21. manifest 聚合统计与实际数据一致
     22. assistant 不得只是复述用户问题
+    23. 工具/检索结果只能出现在 observation 角色，user/assistant 出现标记即 FAIL
+    24. assistant 只能依据最近一次 observation 转述状态字段
+    25. observation 中的订单号必须与上下文当前订单号一致
+    26. 无 observation 依据时不得断言维修归因、操作路径、维修量值或政策结论
+    27. 知识库引用的 doc / version / 章节必须能解析到 knowledge/ 下的真实文档
 
 任一检查判定为 FAIL 时返回非零退出码。
 """
@@ -51,7 +56,9 @@ from dataset_source.common import (  # noqa: E402
     CATEGORY_LABELS,
     PRODUCTION_SYSTEM_KEYS,
     REQUIRED_SCENARIOS,
+    RAG_RESULT_MARK,
     RESERVED_ORDER_IDS,
+    RESULT_MARKS,
     RISK_LEVELS,
     SCENARIOS,
     SPLITS,
@@ -149,6 +156,88 @@ FABRICATED_FACT_PATTERNS = [
 
 SENTENCE_SPLIT_RE = re.compile(r"[。！？；\n]")
 NORMALIZE_RE = re.compile(r"[^一-鿿A-Za-z0-9]+")
+
+# ---------------------------------------------------------------------------
+# 检查 24：订单/物流/退款状态词表
+# ---------------------------------------------------------------------------
+# assistant 说出这些状态词时，必须满足其一：
+#   a) 最近一条 observation 里出现了该词（有依据的转述）；
+#   b) 所在分句带假设/条件/否定标记（讨论规则而非断言当前状态）。
+STATUS_TERMS = (
+    "已付款", "待出库", "已出库", "未出库", "已发货", "未发货", "运输中", "派送中",
+    "已签收", "已到达", "物流异常", "已退款", "待财务打款", "已取消", "已入库",
+    "已完成", "已开票", "未开票", "已支付", "未支付",
+)
+HYPOTHETICAL_MARKERS = (
+    "若", "如果", "假如", "是否", "则", "时", "一旦", "显示", "查到", "核对",
+    "不会", "不能", "无法", "没有", "未", "取决于", "要看", "看是否", "属于",
+    "通常", "情况", "还是", "或", "确认", "判断", "以", "按",
+)
+
+# ---------------------------------------------------------------------------
+# 检查 26：无依据的事实性断言
+# ---------------------------------------------------------------------------
+# 只在**没有** observation 依据的样本里判定。命中即 FAIL：这类内容应由 RAG 提供。
+FACT_ASSERTION_PATTERNS = [
+    (
+        "故障归因断言",
+        re.compile(
+            r"(?:通常|多为|多数|多半|大多|往往|常见于|多与|多因|多是|基本(?:是|上是)|"
+            r"一般(?:是|为|由))[^，。；！？]{0,20}"
+            r"(?:造成|引起|导致|有关|所致|的问题|的故障|的原因)"
+        ),
+    ),
+    (
+        "因果推断断言",
+        # “说明”作为推理连接词时，前面是症状描述（…亮/…常/…光/…音/就…）或位于分句开头；
+        # “请说明 / 一句话说明 / 简单说明 / 并分别说明”属于祈使用法，不在此列。
+        re.compile(
+            r"(?:^|[常亮光音图到好正就无有])说明[^，。；！？]{0,20}"
+            r"(?:正常|异常|故障|问题|在工作|没问题|坏了|偏向|指向)"
+        ),
+    ),
+    ("正常性判定断言", re.compile(r"(?:属于正常(?:现象|的)?|是正常的|不算故障|属于设计现象)")),
+    (
+        "机型操作路径断言",
+        # 只在“给出可执行的具体路径”时判定；
+        # “菜单里这几项的位置按机型不同，我按型号核对”属于免责说明，不算断言。
+        re.compile(
+            r"(?:路径(?:通常)?(?:在|是)|"
+            r"(?:在)?(?:菜单|设置)(?:里|中)[^，。；！？]{0,12}(?:打开|开启|关闭|恢复|调到|调成|选择|找到|改成)|"
+            r"进设置[^，。；！？]{0,10}(?:清理|关闭|打开|删除)|"
+            r"长按[^，。；！？]{0,12}(?:键|秒)|"
+            r"按遥控[^，。；！？]{0,8}键)"
+        ),
+    ),
+    (
+        "维修步骤量值断言",
+        # 中文与阿拉伯数字的时长/尺寸量值：训练数据不应写死这些操作参数。
+        re.compile(
+            r"[0-9一二三四五六七八九十两半]{1,4}\s*(?:个小时|小时|分钟|天|厘米|毫米|米|度)"
+            r"(?:以上|以内|左右)?"
+        ),
+    ),
+    (
+        "政策结论断言",
+        re.compile(
+            r"(?:不在保修范围|在保修范围内|原路退回|按折算|一般不(?:在|支持|适用|收)|"
+            r"通常(?:由|不由)(?:平台|商家|买家)承担|由(?:平台|商家|买家)承担|"
+            r"通常不(?:额外)?收(?:费|取)|不重复收取|不予返还|受.{0,6}期限限制)"
+        ),
+    ),
+]
+# 分句级豁免：同一分句内出现这些表述时，该分句在讨论“依据/不确定性”，
+# 而不是断言事实。粒度必须是分句，否则整条回复里放一句“请提供型号”
+# 就能把所有断言洗白。
+CLAUSE_UNCERTAINTY_MARKERS = (
+    "我不能", "我不会", "不凭", "需检索", "需要检索", "我检索", "检索后",
+    "要按", "为准", "取决于", "无法确认", "不预设", "不下结论", "不一概而论",
+    "不替", "以现行", "按条款", "按型号核对", "核对后", "查到", "由工程师",
+    "由人工", "不猜", "不预先", "要看", "是否",
+    # 条件从句：在讨论规则的适用条件，而不是断言当前事实
+    "若", "如果", "假如", "一旦", "万一", "除非",
+)
+CLAUSE_SPLIT_RE = re.compile(r"[，。；！？、\n]")
 
 
 # ---------------------------------------------------------------------------
@@ -277,17 +366,22 @@ def main():
             continue
         if msgs[0]["role"] != "system":
             role_errors.append(f"{split}[{idx}] 首条不是 system")
-        expected = "user"
-        for m in msgs[1:]:
-            if m["role"] != expected:
-                role_errors.append(f"{split}[{idx}] 角色顺序错误，期望 {expected} 实得 {m['role']}")
+        # user 侧允许 user 或 observation（工具/检索结果），与 LLaMA Factory
+        # data/converter.py 的 odd_tags=(user_tag, observation_tag) 一致。
+        for pos, m in enumerate(msgs[1:]):
+            allowed = ("user", "observation") if pos % 2 == 0 else ("assistant",)
+            if m["role"] not in allowed:
+                role_errors.append(
+                    f"{split}[{idx}] 角色顺序错误，位置 {pos} 期望 {allowed} 实得 {m['role']}"
+                )
                 break
-            expected = "assistant" if expected == "user" else "user"
         if msgs[-1]["role"] != "assistant":
             role_errors.append(f"{split}[{idx}] 结尾不是 assistant")
         roles = {m["role"] for m in msgs}
-        if roles != {"system", "user", "assistant"}:
-            role_errors.append(f"{split}[{idx}] 角色集合异常：{sorted(roles)}")
+        if not {"system", "user", "assistant"} <= roles:
+            role_errors.append(f"{split}[{idx}] 缺少必需角色，实际：{sorted(roles)}")
+        if roles - {"system", "user", "assistant", "observation"}:
+            role_errors.append(f"{split}[{idx}] 出现未允许的角色：{sorted(roles)}")
     audit.add(2, "三种角色顺序", not role_errors,
               "system → user/assistant 交替，均以 assistant 结尾" if not role_errors
               else f"{len(role_errors)} 处问题", role_errors)
@@ -520,7 +614,12 @@ def main():
     # ---- 16. 编造动态事实 ------------------------------------------------
     fabricated = []
     for split, idx, rec in all_records:
-        grounded = any(TOOL_RESULT_MARK in m["content"] for m in rec["messages"] if m["role"] == "user")
+        # 依据块现在只出现在 observation 角色（不再伪装成 user）
+        grounded = any(
+            any(k in m["content"] for k in RESULT_MARKS)
+            for m in rec["messages"]
+            if m["role"] == "observation"
+        )
         if grounded:
             continue
         for t in assistant_turns(rec):
@@ -530,11 +629,15 @@ def main():
                     fabricated.append(f"{split}[{idx}] {label}：{m.group()[:30]}")
     grounded_count = sum(
         1 for _, _, rec in all_records
-        if any(TOOL_RESULT_MARK in m["content"] for m in rec["messages"] if m["role"] == "user")
+        if any(TOOL_RESULT_MARK in m["content"] for m in rec["messages"] if m["role"] == "observation")
+    )
+    rag_grounded_count = sum(
+        1 for _, _, rec in all_records
+        if any(RAG_RESULT_MARK in m["content"] for m in rec["messages"] if m["role"] == "observation")
     )
     audit.add(16, "动态事实未编造", not fabricated,
-              f"无依据的订单/物流/退款事实断言 0 处；{grounded_count} 条样本带 "
-              f"{TOOL_RESULT_MARK} 依据块，assistant 仅做转述"
+              f"无依据的订单/物流/退款事实断言 0 处；observation 依据块共 "
+              f"{grounded_count} 条 {TOOL_RESULT_MARK} + {rag_grounded_count} 条 {RAG_RESULT_MARK}"
               if not fabricated else f"{len(fabricated)} 处疑似编造", fabricated)
 
     # ---- 17. expected_tool 元数据 ---------------------------------------
@@ -645,6 +748,152 @@ def main():
                 echo_errors.append(f"{split}[{idx}] assistant 原样复述用户问题：{u[:24]}")
     audit.add(22, "assistant 未复述用户问题", not echo_errors,
               "无原样复述" if not echo_errors else f"{len(echo_errors)} 处复述", echo_errors)
+
+    # ---- 23. 工具/检索结果的角色归属 -------------------------------------
+    role_leak, obs_struct = [], []
+    for split, idx, rec in all_records:
+        msgs = rec["messages"]
+        for pos, m in enumerate(msgs):
+            marks = [k for k in RESULT_MARKS if k in m["content"]]
+            if marks and m["role"] != "observation":
+                role_leak.append(f"{split}[{idx}].{m['role']}[{pos}] 出现 {marks}，必须放在 observation 角色")
+            if m["role"] == "observation" and not marks:
+                obs_struct.append(f"{split}[{idx}][{pos}] observation 未带 {'/'.join(RESULT_MARKS)} 标记")
+            if m["role"] == "observation":
+                if pos == 1 or msgs[pos - 1]["role"] != "assistant":
+                    obs_struct.append(f"{split}[{idx}][{pos}] observation 前一轮必须是 assistant")
+                if pos + 1 >= len(msgs) or msgs[pos + 1]["role"] != "assistant":
+                    obs_struct.append(f"{split}[{idx}][{pos}] observation 后一轮必须是 assistant")
+                if pos % 2 == 0:
+                    obs_struct.append(f"{split}[{idx}][{pos}] observation 必须落在 user 侧（奇数位）")
+    obs_records = [
+        (s, i, r) for s, i, r in all_records
+        if any(m["role"] == "observation" for m in r["messages"])
+    ]
+    audit.add(23, "工具/检索结果角色归属", not (role_leak or obs_struct),
+              f"{len(obs_records)} 条样本带 observation 轮，标记未出现在 user/assistant；"
+              f"observation 均夹在 assistant 之间"
+              if not (role_leak or obs_struct) else f"{len(role_leak) + len(obs_struct)} 处问题",
+              role_leak + obs_struct)
+
+    # ---- 24. assistant 只能转述最近一次 observation -----------------------
+    ungrounded_status = []
+    for split, idx, rec in all_records:
+        msgs = rec["messages"]
+        last_obs = ""
+        for pos, m in enumerate(msgs):
+            if m["role"] == "observation":
+                last_obs = m["content"]
+                continue
+            if m["role"] != "assistant":
+                continue
+            # 条件标记按整句判定：中文常写成“未出库…，已出库…”，
+            # 条件词落在前半句，按分句切会误判后半句为断言。
+            for sentence in SENTENCE_SPLIT_RE.split(m["content"]):
+                hypothetical = any(mk in sentence for mk in HYPOTHETICAL_MARKERS)
+                for clause in CLAUSE_SPLIT_RE.split(sentence):
+                    for term in STATUS_TERMS:
+                        if term not in clause:
+                            continue
+                        if term in last_obs:
+                            continue  # 有依据的转述
+                        if hypothetical:
+                            continue  # 条件式讨论规则，不是断言当前状态
+                        ungrounded_status.append(
+                            f"{split}[{idx}][{pos}] 无依据断言状态“{term}”：{clause[:34]}"
+                        )
+    audit.add(24, "状态转述有依据", not ungrounded_status,
+              "assistant 提到的订单/退款状态词，或来自最近一条 observation，或处于条件表述中"
+              if not ungrounded_status else f"{len(ungrounded_status)} 处无依据断言", ungrounded_status)
+
+    # ---- 25. observation 订单号与上下文一致 ------------------------------
+    obs_order_mismatch = []
+    for split, idx, rec in all_records:
+        msgs = rec["messages"]
+        for pos, m in enumerate(msgs):
+            if m["role"] != "observation":
+                continue
+            obs_ids = {t.upper() for t in ORDER_TOKEN_RE.findall(m["content"])}
+            if not obs_ids:
+                continue
+            ctx = " ".join(x["content"] for x in msgs[:pos])
+            ctx_ids = {t.upper() for t in ORDER_TOKEN_RE.findall(ctx)}
+            stray = obs_ids - ctx_ids
+            if stray:
+                obs_order_mismatch.append(
+                    f"{split}[{idx}][{pos}] observation 订单号 {sorted(stray)} 未在上下文出现"
+                )
+            # 上下文里最后一次出现的订单号才是“当前订单号”
+            ordered = ORDER_TOKEN_RE.findall(ctx)
+            if ordered and ordered[-1].upper() not in obs_ids:
+                obs_order_mismatch.append(
+                    f"{split}[{idx}][{pos}] 当前订单号 {ordered[-1]} 与 observation 中 {sorted(obs_ids)} 不一致"
+                )
+    audit.add(25, "observation 订单号一致", not obs_order_mismatch,
+              "工具返回中的订单号与上下文当前订单号一致"
+              if not obs_order_mismatch else f"{len(obs_order_mismatch)} 处不一致", obs_order_mismatch)
+
+    # ---- 26. 无依据的维修/政策事实断言 -----------------------------------
+    fact_hits = []
+    for split, idx, rec in all_records:
+        msgs = rec["messages"]
+        has_obs = any(m["role"] == "observation" for m in msgs)
+        for pos, m in enumerate(msgs):
+            if m["role"] != "assistant":
+                continue
+            # 紧跟 observation 的回复属于有依据转述，本项不判定
+            if has_obs and pos > 0 and msgs[pos - 1]["role"] == "observation":
+                continue
+            for clause in CLAUSE_SPLIT_RE.split(m["content"]):
+                if any(mk in clause for mk in CLAUSE_UNCERTAINTY_MARKERS):
+                    continue
+                for label, pattern in FACT_ASSERTION_PATTERNS:
+                    hit = pattern.search(clause)
+                    if hit:
+                        fact_hits.append(f"{split}[{idx}][{pos}] {label}：{clause.strip()[:40]}")
+                        break
+    audit.add(26, "无依据事实断言", not fact_hits,
+              "未出现无 RAG 依据的故障归因、操作路径、维修量值或政策结论"
+              if not fact_hits else f"{len(fact_hits)} 处断言应改写或补 RAG 依据", fact_hits)
+
+    # ---- 27. 知识库引用必须解析到真实文档 --------------------------------
+    kb_errors, kb_ok, kb_miss = [], 0, 0
+    kb_docs = {}
+    kb_root = REPO_ROOT / "knowledge"
+    for md in sorted(kb_root.rglob("*.md")) if kb_root.exists() else []:
+        text = md.read_text(encoding="utf-8")
+        ver = re.search(r"document_version:\s*(\S+)", text)
+        heads = {h.strip() for h in re.findall(r"^#{2,3}\s*(.+)$", text, re.M)}
+        kb_docs[str(md.relative_to(REPO_ROOT))] = (ver.group(1) if ver else None, heads)
+    citation_re = re.compile(r"doc=(\S+?)#(\S+?)\s+version=(\S+)")
+    for split, idx, rec in all_records:
+        for pos, m in enumerate(rec["messages"]):
+            if m["role"] != "observation" or RAG_RESULT_MARK not in m["content"]:
+                continue
+            hit = citation_re.search(m["content"])
+            if not hit:
+                kb_miss += 1  # 检索未命中类降级样本，不带 doc= 引用
+                continue
+            doc, anchor_name, ver = hit.groups()
+            if not kb_docs:
+                kb_errors.append(f"{split}[{idx}][{pos}] 引用 {doc} 但 knowledge/ 目录不存在")
+                continue
+            if doc not in kb_docs:
+                kb_errors.append(f"{split}[{idx}][{pos}] 引用的文档不存在：{doc}")
+                continue
+            real_ver, heads = kb_docs[doc]
+            if ver != real_ver:
+                kb_errors.append(
+                    f"{split}[{idx}][{pos}] {doc} 版本不符：引用 {ver}，实际 {real_ver}"
+                )
+            elif anchor_name not in heads:
+                kb_errors.append(f"{split}[{idx}][{pos}] 章节不存在：{doc}#{anchor_name}")
+            else:
+                kb_ok += 1
+    audit.add(27, "知识库引用可解析", not kb_errors,
+              f"{kb_ok} 条引用命中真实文档+版本+章节，{kb_miss} 条为检索未命中降级样本"
+              + ("" if kb_docs else "；knowledge/ 目录不存在，跳过实体校验")
+              if not kb_errors else f"{len(kb_errors)} 处引用无法解析", kb_errors)
 
     # ---- 输出 ------------------------------------------------------------
     print("=" * 78)

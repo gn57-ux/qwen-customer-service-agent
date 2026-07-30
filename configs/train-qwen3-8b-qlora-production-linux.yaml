@@ -16,7 +16,12 @@
 # overwrite_output_dir 保持 false，避免误覆盖既有 checkpoint。
 
 ### model
+# 基础模型必须与 Adapter 绑定的 revision 完全一致，训练前先核验：
+#   cd /workspace/models/Qwen3-8B && git rev-parse HEAD
+#   期望：b968826d9c46dd6066d109eabc6255188de91218
+# revision 不一致时不得开训：Tokenizer 或 chat template 变化会让 Adapter 失配。
 model_name_or_path: /workspace/models/Qwen3-8B
+model_revision: b968826d9c46dd6066d109eabc6255188de91218
 trust_remote_code: true
 quantization_bit: 4
 quantization_method: bnb
@@ -35,6 +40,16 @@ lora_dropout: 0.05
 lora_target: all
 
 ### dataset
+# 数据集版本绑定（customer-service-2026-07-v1，随机种子 20260729）：
+#   train      640 条  sha256 25aa1037e31e2985f4598cbb60b11f144a2571cfef892e5816de12fe3a011bed
+#   validation  80 条  sha256 d8cbcf9a0cbf303f1340b36594f66308ebaf4487650a605c509267bb8226c2e8
+#   test        80 条  sha256 7baa23aec2e35c4744d2f2cf8bccf3b65b773f678d3244caf867551b8a8a8406
+# 开训前用 shasum -a 256 datasets/customer-service-*.json 逐一核对；
+# 不一致说明数据被改动，须重新跑 build + audit 后更新本文件。
+#
+# dataset_info.json 中三个正式数据集已配置 observation_tag: observation，
+# 工具与知识库返回由 qwen3_nothink 的 format_observation 编码为 <tool_response>，
+# 属于 source 段、label=IGNORE_INDEX，不计入损失。
 dataset: customer_service_train_640
 eval_dataset: customer_service_validation_80
 dataset_dir: /workspace/qwen-customer-service-agent/datasets
