@@ -34,11 +34,11 @@ if command -v llamafactory-cli >/dev/null 2>&1; then
   # 不在这里重复定义任何超参。
   set +e
   run_logged "$LF_LOG" llamafactory-cli train "$PROD_CONFIG" \
-        --do_train false \
-        --do_eval false \
-        --output_dir "$CONTROL_DIR/preprocess-probe" \
-        --tokenized_path "$TOKENIZED" \
-        --overwrite_output_dir true
+        do_train=false \
+        do_eval=false \
+        output_dir="$CONTROL_DIR/preprocess-probe" \
+        tokenized_path="$TOKENIZED" \
+        overwrite_output_dir=true
   LF_RC=$?
   set -e
   say "  llamafactory-cli 退出码：$LF_RC"
