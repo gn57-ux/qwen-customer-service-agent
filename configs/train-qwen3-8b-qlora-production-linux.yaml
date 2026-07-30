@@ -27,7 +27,6 @@ quantization_bit: 4
 quantization_method: bnb
 quantization_type: nf4
 double_quantization: true
-compute_dtype: bfloat16
 
 ### method
 stage: sft
