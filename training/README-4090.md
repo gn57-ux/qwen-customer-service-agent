@@ -270,7 +270,8 @@ python3 training/tools/verify_model_revision.py --manifest-schema
    - 每条都有 `input_ids` 与 `labels` 且长度一致
    - assistant 目标区存在非 `-100` 的 label（否则该条不产生梯度）
    - system / user / observation 区域全为 `-100`
-   - 把 observation 正文用同一个 tokenizer 编码后在 `input_ids` 里定位，
+   - 把 observation 按 `qwen3_nothink.format_observation` 的完整 ChatML
+     `<tool_response>` 槽位用同一个 tokenizer 编码后在 `input_ids` 里定位，
      该区间的 labels 必须全是 `-100`；**定位不到即 FAIL**，不允许跳过
    - 每个 split 的 count / min / P50 / P95 / max / 超 1536 数 / 截断率
 4. 结果写入 `<control>/preprocess/tokenized-verify.json`，预处理报告**只采信它**。

@@ -36,6 +36,10 @@ import gate_common as G  # noqa: E402
 
 IGNORE_INDEX = -100
 EXPECTED = {"train": 640, "validation": 80}
+OBSERVATION_SLOT = (
+    "<|im_start|>user\n<tool_response>\n{content}\n</tool_response><|im_end|>\n"
+    "<|im_start|>assistant\n"
+)
 
 
 def find_subsequence(haystack: list, needle: list, start: int = 0) -> int:
@@ -170,7 +174,17 @@ def build_masked_spans(tok, split: str, cutoff: int) -> dict:
             role = m["role"]
             if role not in ("system", "user", "observation"):
                 continue
-            ids = tok(m["content"], add_special_tokens=False)["input_ids"]
+            # LLaMA Factory does not tokenize an observation as bare content.
+            # qwen3_nothink.format_observation wraps it in the complete ChatML
+            # tool-response slot first.  Tokenizing only the bare content can
+            # differ at its boundaries because of BPE merging and produces
+            # false "not found" failures for longer observations.
+            text = (
+                OBSERVATION_SLOT.format(content=m["content"])
+                if role == "observation"
+                else m["content"]
+            )
+            ids = tok(text, add_special_tokens=False)["input_ids"]
             if len(ids) >= 4:
                 ordered.append({"role": role, "tokens": list(ids)})
         spans[rec["index"]] = ordered
