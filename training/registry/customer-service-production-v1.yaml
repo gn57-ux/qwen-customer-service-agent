@@ -1,0 +1,81 @@
+# 模型资产登记（对应 docs/商业化训练部署与前端改造指导方案.md §2）
+#
+# 本文件是**计划与绑定**，不是训练结果。带 pending 的字段在 4090 跑完
+# 对应阶段后由人工按报告回填 —— 脚本不会自动改这里，避免出现"自己宣布通过"。
+
+model_id: customer-service-production-v1
+status: planned              # planned → training → candidate → released
+
+base_model:
+  name: Qwen/Qwen3-8B
+  revision: b968826d9c46dd6066d109eabc6255188de91218
+  local_path: /workspace/models/Qwen3-8B
+  source: huggingface
+  note: revision 不一致时 tokenizer / chat template 可能变化，Adapter 会失配。
+
+tokenizer:
+  name: 与基础模型一致
+  template: qwen3_nothink
+  observation_encoding: "<tool_response> … </tool_response>（LLaMA Factory format_observation）"
+
+adapter:
+  format: peft-lora
+  rank: 16
+  alpha: 32
+  dropout: 0.05
+  target: all
+  quantization: 4bit-nf4 + bf16 compute
+  path: pending              # 阶段 05 产出的 best_model_checkpoint
+  package: pending           # 阶段 08 产出的 tar.gz
+  package_sha256: pending
+
+training:
+  dataset_version: customer-service-2026-07-v1
+  data_commit: afa83d0
+  config: configs/train-qwen3-8b-qlora-production-linux.yaml
+  runtime: Ubuntu 22.04 / Python 3.12 / PyTorch 2.7.1+cu126 / LLaMA Factory 0.9.5 / RTX 4090 24GB
+  output_dir: /workspace/training-artifacts/qwen3-8b/customer-service-production-v1
+  datasets:
+    train:
+      file: datasets/customer-service-train-640.json
+      count: 640
+      sha256: 76464f6b2da0be60d30e796d566e80f7c5fb3597d61020c5c36d49a841e4d5e7
+    validation:
+      file: datasets/customer-service-validation-80.json
+      count: 80
+      sha256: d8cbcf9a0cbf303f1340b36594f66308ebaf4487650a605c509267bb8226c2e8
+    test:
+      file: datasets/customer-service-test-80.json
+      count: 80
+      sha256: 7baa23aec2e35c4744d2f2cf8bccf3b65b773f678d3244caf867551b8a8a8406
+      usage: 仅离线评测；不参与训练、调参、checkpoint 选择与 early stopping
+
+checkpoint_selection:
+  metric: eval_loss
+  greater_is_better: false
+  source: validation（customer_service_validation_80）
+  best_checkpoint: pending
+  best_eval_loss: pending
+
+evaluation:
+  base_report: pending       # 阶段 03
+  adapter_report: pending    # 阶段 07
+  comparison: pending        # 阶段 07 的 base-vs-qlora.md
+  gen_config_fingerprint: pending
+  status: pending
+  note: 规则指标与人工复核项分开记录；规则命中率不作为质量结论。
+
+knowledge_binding:
+  repair_docs_version: 1.0.0
+  files:
+    - knowledge/repair/refrigerator.md
+    - knowledge/repair/television.md
+    - knowledge/repair/monitor.md
+  note: 训练数据中 6 条知识库 observation 引用这三份文档的真实章节；
+        文档改版后需重新核对引用有效性（审计第 27 项）。
+
+merge_and_export:
+  merged_model: not_approved
+  gguf: not_approved
+  mlx: not_approved
+  note: 融合与导出需单独批准，本阶段不执行。
