@@ -1,8 +1,8 @@
-# RAG 向量入库阶段说明
+# RAG 检索层说明（向量入库 + 独立 Reranker）
 
-本阶段只做一件事：**把 `knowledge/` 下的维修 Markdown 切分、向量化，写入本地 Qdrant，并验证向量检索可用。**
+检索链路：**Markdown → bge-m3 向量入库 → 向量召回 Top20 → 独立 Cross-Encoder Rerank → Top5。**
 
-本阶段**不包含**：接 Agent、前端、Reranker。检索验证通过后才进入下一阶段。
+**不包含**：接 Agent、前端。Rerank 验收通过后才进入下一阶段。
 
 ---
 
@@ -207,7 +207,74 @@ KNOWLEDGE_GLOBS="repair/*.md,policies/*.md" npm run rag:ingest
 `~/.claude` 下的工作流经验属于另一条线，**不进入客服 Collection**，
 本阶段也不读取、不摄取 `~/.claude`。
 
-## 12. 检索验证口径
+## 12. 独立 Reranker
+
+### 12.1 模型与运行时
+
+| 项 | 值 |
+|---|---|
+| 原始模型 | `BAAI/bge-reranker-v2-m3`，Apache-2.0，0.6B，bge-m3 同族 |
+| GGUF | `gpustack/bge-reranker-v2-m3-GGUF` @ `3093af03…`，Q8_0，635,676,416 字节 |
+| SHA-256 | `a43c7c9b11a4c1517e5bf95151960e1621d1b72f7a493364b01e386cf1aaa1d3` |
+| 运行时 | llama.cpp（brew 10180，`version: 10180 (11b068d06)`），Apple Metal |
+| 端点 | `http://127.0.0.1:8787/v1/rerank`，只监听本机 |
+| 权重位置 | `mastra-agent/.models/`（已 gitignore，**不入库**） |
+| 元数据 | `mastra-agent/reranker-model.lock.json`（入库） |
+
+启动参数**以本机 `llama-server --help` 实测为准**，未照抄文档：
+
+```bash
+llama-server --model .models/bge-reranker-v2-m3-Q8_0.gguf \
+  --reranking --embedding --pooling rank \
+  --host 127.0.0.1 --port 8787
+```
+
+**这是真 cross-encoder**：query 与 document 拼成一条序列走同一次前向，直接输出相关性分数。
+**不是**向量分数加权，也不是把多路向量分数合并。
+
+### 12.2 服务生命周期
+
+```bash
+npm run rerank:up       # 启动；已运行时不重复拉起；含健康等待与 /v1/rerank smoke test
+npm run rerank:status   # PID、命令行校验、健康检查
+npm run rerank:down     # 停止
+```
+
+- PID 写入 `mastra-agent/.runtime/rerank-server.pid`；
+- `rerank:down` **只**停止 PID 文件记录、且命令行同时包含 `llama-server` 与本项目模型文件名的进程；
+- **禁用 `pkill -f` / `killall`**，避免误杀用户其他进程；校验不通过时拒绝停止并提示人工处理；
+- 端口上有服务但没有本脚本的 PID 文件时，`rerank:up` 不接管、不停止该进程。
+
+### 12.3 分数口径（不可混淆）
+
+每条结果**分别**保留四个字段，绝不合成"综合分"：
+
+| 字段 | 来源 |
+|---|---|
+| `vectorScore` | Qdrant Cosine 相似度 |
+| `vectorRank` | 向量召回名次（v1…v20） |
+| `rerankScore` | bge-reranker-v2-m3 交叉编码分数 |
+| `rerankRank` | 重排名次（r1…r5） |
+
+`risk_level` **不参与打分**。安全规则属于后续 System Prompt / 安全路由，不混进 Rerank 分数。
+
+### 12.4 降级语义
+
+| `rerankStatus` | 触发条件 | 行为 |
+|---|---|---|
+| `ok` | 服务正常 | 输出 Rerank Top5 |
+| `unavailable` | `RERANK_ENABLED=true` 但服务不可用 / 响应非法 | 明确报降级与原因，`rerankScore=null`，**不输出向量顺序冒充 Rerank**，`rag:search` 验收模式**退出码非零** |
+| `disabled` | 显式 `RERANK_ENABLED=false` | 输出向量顺序 Top5 并标注"未经过 Rerank"，退出码 0 |
+
+响应下标还会做映射校验：越界、重复、非法 score 一律判 `unavailable`，不将错就错。
+
+### 12.5 可插拔
+
+`src/rag/rerank.ts` 定义 `Reranker` 接口（`name` / `health()` / `rerank(query, documents, topK)`），
+当前实现为 `LlamaCppReranker`（**一次批量请求**送全部候选，不逐条发 N 次）。
+换模型或换托管服务只需另实现该接口，调用方不依赖 llama.cpp。
+
+## 13. 检索验证口径
 
 `npm run rag:search` 输出的 `score` 是 **Qdrant 的 Cosine 相似度**，属于向量召回结果。
 每条结果都会打印 `knowledge_set` 与 `scope`，便于人工核验隔离是否生效。

@@ -38,3 +38,7 @@ Thumbs.dbgithub-upload-files/
 # RAG 运行期产物（入库报告等），不提交
 mastra-agent/.runtime/
 .runtime/
+
+# 本地 Reranker 模型权重（Apache-2.0，可自行下载，不入库）
+mastra-agent/.models/
+.models/
