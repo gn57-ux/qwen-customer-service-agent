@@ -19,7 +19,7 @@
 | 3 | `workbench-app-scaffold` | web-client 内部搭建 Vite+React+TS+Tailwind，移植 screen 内联设计令牌 | - | ✅ 已完成（commit `cfc889f`） |
 | 4 | `workbench-shell-layout` | 三栏骨架 + 顶栏服务状态 + 左侧会话列表 | 2, 3 | ✅ 已完成（commit `e121553`） |
 | 5 | `chat-stream-conversation` | 中间对话区 + 底部输入区 + 流式 5 类事件 + 取消 | 3 | ✅ 已完成（commit `c948242`） |
-| 6 | `evidence-panel` | 右侧处理依据（执行链路/回答模式/引用来源/trace） | 1, 3 | 待开发 |
+| 6 | `evidence-panel` | 右侧处理依据（执行链路/回答模式/引用来源/trace） | 1, 3 | ✅ 已完成（commit `ac22a22`） |
 | 7 | `scenarios-and-degradation` | 四类业务场景、订单 6 态（详情只读 `order.details`）、degraded/error、响应式抽屉降级 | 5, 6, **1** | 待开发 (v2) |
 | 8 | `quality-gates-and-design-review` | 8 项门禁脚本（直连扫描 **6 端口**）、组件与 status 测试、设计还原复核 | 1-7 | 待开发 (v2) |
 

@@ -16,19 +16,19 @@
 
 ### 功能 1: 推导层（纯函数）
 
-- [ ] T-001: 新建 `evidence/derive.ts`，定义 `EvidenceView` 与 `deriveEvidence(body)`；函数签名只接受 `ChatResponseBody`，不接受正文字符串 ~30min
-- [ ] T-002: 实现执行链路推导（route/toolCalls/retrievedCount/returnedCount/reranked/safety 六类节点及条件渲染） ~30min
-- [ ] T-003: 实现「高优」判定（`reranked===true` 且 `rerankScore` 最大）与左边框色规则，含 `reranked===false` 全 null 边界 ~15min
-- [ ] T-004: 推导层单测：覆盖四类 route、reranked 真假、retrievedCount 为 0、degraded、空 sources ~30min
+- [x] T-001: 新建 `evidence/derive.ts`，定义 `EvidenceView` 与 `deriveEvidence(body)`；函数签名只接受 `ChatResponseBody`，不接受正文字符串 ~30min
+- [x] T-002: 实现执行链路推导（route/toolCalls/retrievedCount/returnedCount/reranked/safety 六类节点及条件渲染） ~30min
+- [x] T-003: 实现「高优」判定（`reranked===true` 且 `rerankScore` 最大）与左边框色规则，含 `reranked===false` 全 null 边界 ~15min
+- [x] T-004: 推导层单测：覆盖四类 route、reranked 真假、retrievedCount 为 0、degraded、空 sources ~30min
 
 ### 功能 2: 面板 UI
 
-- [ ] T-005: 右栏容器（300/320px、`min-[1100px]` 断点、JetBrains Mono 内容区）+ `<EvidenceHeader />` + `<StepTimeline />`（竖线与 `-left-[21px]` 圆点） ~30min
-- [ ] T-006: `<ModeCard />`（三类 chip + degraded chip 与原因）+ `<SourceList />`（高优/边框色/truncate）+ `<EvidenceFooter />`（traceId 与 `x.xs` 格式）+ 三处空状态 ~30min
+- [x] T-005: 右栏容器（300/320px、`min-[1100px]` 断点、JetBrains Mono 内容区）+ `<EvidenceHeader />` + `<StepTimeline />`（竖线与 `-left-[21px]` 圆点） ~30min
+- [x] T-006: `<ModeCard />`（三类 chip + degraded chip 与原因）+ `<SourceList />`（高优/边框色/truncate）+ `<EvidenceFooter />`（traceId 与 `x.xs` 格式）+ 三处空状态 ~30min
 
 ### 集成与测试
 
-- [ ] T-007: 流式衔接：`meta` 显 traceId、`tool-result` 实时追加节点、`done` 用 `deriveEvidence` 全量覆盖重建（稳定 key 防闪烁） ~30min
+- [x] T-007: 流式衔接：`meta` 显 traceId、`tool-result` 实时追加节点、`done` 用 `deriveEvidence` 全量覆盖重建（稳定 key 防闪烁） ~30min
 
 ## 依赖关系
 

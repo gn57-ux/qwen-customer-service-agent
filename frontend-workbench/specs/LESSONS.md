@@ -67,3 +67,15 @@
 **技术要点（可复用）**：
 - 并发防护除了 [[stale-concurrent-refresh-must-guard-by-request-id]] 的"自增 token 比较"外，还需要一个"当前在途操作绑定哪个实体"的 ref（这里是 `activeTurnRef: {sessionId, assistantId}`），否则同步中断时"该往哪条消息写 aborted"这件事无从得知——单纯的 token 递增只能拒绝旧数据，不能告诉你旧数据原本要去哪。
 - 测试 jsdom 里没有真实布局，`scrollHeight`/`clientHeight`/`scrollTop` 全部是 0/可写但不联动；要测滚动策略必须用 `Object.defineProperty` 手动打桩这三个属性（`scrollTop` 要给 get/set 都接上同一个闭包变量），再用 `fireEvent.scroll()` 触发组件自己的 `onScroll` 处理器。
+
+## 2026-07-31 — Feature 6: evidence-panel
+
+**Stop hook CR 三轮才过，三个问题彼此独立，但都属于"用等值/相等判断代替确定性排名"或"画了交互外观却没接行为"这类容易被自己说服"应该没问题"的坑：**
+
+1. **"最大值"判定不能用 `=== max` 这种等值比较来选唯一项——并列时会选出所有项。** `deriveEvidence()` 的「高优」判定第一版是 `source.rerankScore === maxRerank`，`rerankScore` 并列最高时会把所有并列项都判定为高优，违反"高优只能有一项"的 rank-1 语义。**教训**：任何"从集合里选唯一最大/最小项"的需求，必须显式维护一个"目前为止最大值所在的下标"（`topIndex`），比较时用 `>`（严格大于）而不是先求 `Math.max()` 再对每项做 `===` 判等——后者在等值场景下退化成了"选出全部并列项"而不是"选出其中一项"。
+2. **React key 用业务字段（这里是 `label`）而不是下标，是防闪烁的正确方向，但没考虑"同一个业务字段值可能重复"的情况。** 同一工具被重复调用（重试/多次查订单）会产生多个 label 完全相同的节点，直接拿 label 当 key 会撞车，React 可能复用/丢弃错误的 DOM 节点。**教训**：用业务字段当 key 解决的是"数组重排后如何找回同一个逻辑节点"，但业务字段本身可能不唯一——正确做法是给业务字段加一个"这是第几次出现"的序号后缀（`` `${label}#${occurrence}` ``），只要生成顺序在两次渲染之间保持一致（这里是"tool-result 到达顺序不变"），加了序号的 key 依然是稳定的，同时解决了唯一性。
+3. **画了 `cursor-pointer` + hover 态但没接真实点击行为，是"看起来能用、实际什么都不做"的误导性 UI。** `SourceList` 第一版只做了视觉可交互样式，需求 §开放问题明确要求"点击滚动定位到正文对应引用角标"，但正文（`AssistantMessage`）当时完全没有渲染引用角标，点了自然什么都不会发生。**教训**：需求文档里对"开放问题"给出的具体 resolution（哪怕看起来只是次要交互细节）也是这个 feature 的验收范围，不能因为"design.md 没在组件拆分表里单独列一行"就默认放到下一个 feature；发现"点击目标还不存在"时，正确做法是把目标（这里是引用角标）一起实现，而不是先上视觉再等下一轮 CR 来指出。
+
+**技术要点（可复用）**：
+- 唯一 top-1 选择：`let topIndex = -1, maxScore = -Infinity; items.forEach((item, i) => { if (item.score > maxScore) { maxScore = item.score; topIndex = i; } })`，比较用 `>` 不用 `>=`，第一个达到最大值的下标自然胜出，是天然的确定性 tie-break。
+- 双组件共享的 DOM id/锚点生成规则要抽成一个独立的纯函数（本例 `citation.ts` 的 `citationElementId()`），由生产者（`AssistantMessage` 渲染锚点）和消费者（`SourceList` 滚动定位）共同导入，禁止两边各写一份字符串模板——那样任何一边改了格式就会静默失联。
