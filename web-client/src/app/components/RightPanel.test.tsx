@@ -146,4 +146,30 @@ describe("RightPanel", () => {
 
     anchor.remove();
   });
+
+  it("error 收尾时右栏保留已收到节点并追加红色「已中断 · 生成失败」（F-008/AC-007）", () => {
+    const turn: AssistantTurn = {
+      phase: "error",
+      text: "已生成的部分",
+      errorMessage: "上游服务异常",
+      toolCalls: [{ name: "searchKnowledgeBase", arguments: {}, result: {} }],
+    };
+    const { getByText, container } = render(<RightPanel turn={turn} />);
+    expect(getByText("已调用 · 维修知识库")).toBeTruthy();
+    const interrupted = getByText("已中断 · 生成失败");
+    expect(interrupted).toBeTruthy();
+    expect(interrupted.className).toContain("font-bold");
+    expect(container.querySelector("span.bg-safety-text")).toBeTruthy();
+  });
+
+  it("aborted 收尾时不追加「已中断」节点，只保留已有的 tool-result 节点", () => {
+    const turn: AssistantTurn = {
+      phase: "aborted",
+      text: "部分回答",
+      toolCalls: [{ name: "searchKnowledgeBase", arguments: {}, result: {} }],
+    };
+    const { getByText, queryByText } = render(<RightPanel turn={turn} />);
+    expect(getByText("已调用 · 维修知识库")).toBeTruthy();
+    expect(queryByText("已中断 · 生成失败")).toBeNull();
+  });
 });

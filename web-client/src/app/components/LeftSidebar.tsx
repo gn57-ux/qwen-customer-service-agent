@@ -1,22 +1,22 @@
 /**
  * 左栏（需求 §4.0 / design.md 模块 5）。220px 固定宽 + flex-shrink-0 防止被
  * 主网格 flex 容器压缩（LESSONS 风险点：flex 容器中固定宽度会被内容挤压）。
+ *
+ * `SessionListContent` 单独导出——feature 7 的左侧抽屉（<768px）复用同一份
+ * 内容组件，只是外层容器不同（design.md 模块 4："关键：复用而非复制"）。
  */
 import type { Session } from "../session.ts";
 
-export interface LeftSidebarProps {
+export interface SessionListContentProps {
   sessions: Session[];
   activeId: string;
   onSelect: (id: string) => void;
   onNewSession: () => void;
 }
 
-export function LeftSidebar({ sessions, activeId, onSelect, onNewSession }: LeftSidebarProps) {
+export function SessionListContent({ sessions, activeId, onSelect, onNewSession }: SessionListContentProps) {
   return (
-    <aside
-      className="hidden md:flex w-[220px] bg-sidebar-left-bg border-r border-border-color
-                 flex-col justify-between p-4 flex-shrink-0 h-full overflow-y-auto no-scrollbar"
-    >
+    <>
       <div>
         <button
           type="button"
@@ -58,6 +58,19 @@ export function LeftSidebar({ sessions, activeId, onSelect, onNewSession }: Left
       <div className="text-[12px] text-text-muted mt-8 text-center pt-4">
         本地运行 · 数据不会离开当前设备
       </div>
+    </>
+  );
+}
+
+export interface LeftSidebarProps extends SessionListContentProps {}
+
+export function LeftSidebar(props: LeftSidebarProps) {
+  return (
+    <aside
+      className="hidden md:flex w-[220px] bg-sidebar-left-bg border-r border-border-color
+                 flex-col justify-between p-4 flex-shrink-0 h-full overflow-y-auto no-scrollbar"
+    >
+      <SessionListContent {...props} />
     </aside>
   );
 }

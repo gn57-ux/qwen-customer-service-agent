@@ -3,7 +3,7 @@
  * 具体交互留给 feature 4-6；这里只验证：能挂载、ClientProvider 正确下发、
  * 根容器满足"不出现 body 级滚动"的结构性前提（h-screen + overflow-hidden）。
  */
-import { fireEvent, render, waitFor } from "@testing-library/react";
+import { fireEvent, render, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { App } from "./App.tsx";
@@ -141,6 +141,42 @@ describe("Workbench 会话集成（Codex Review P1/P2 修复）", () => {
     expect(getByRole("button", { name: "发送" })).toBeTruthy();
 
     releaseStream?.();
+  });
+});
+
+describe("Workbench 响应式抽屉（Feature 7 F-012/F-013）", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("点击处理依据入口打开右抽屉，展示 EvidencePanelContent；Esc 关闭", () => {
+    const { getByRole, queryByRole } = render(<App client={fakeClient()} />);
+
+    expect(queryByRole("dialog")).toBeNull();
+    fireEvent.click(getByRole("button", { name: "查看处理依据" }));
+
+    const dialog = getByRole("dialog");
+    expect(dialog).toBeTruthy();
+    // EvidencePanelContent 的空状态文案（尚无 AI 消息）——桌面右栏本身也会渲染
+    // 同一段空状态文案，jsdom 不做真实布局/媒体查询，两者会同时在场，所以要把
+    // 断言限定在抽屉 dialog 内部，而不是整页 getByText。
+    expect(within(dialog).getByText("暂无处理记录，发送问题后展示执行链路")).toBeTruthy();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(queryByRole("dialog")).toBeNull();
+  });
+
+  it("点击菜单入口打开左抽屉，展示会话列表；选中会话后抽屉自动关闭", () => {
+    const { getByRole, queryByRole } = render(<App client={fakeClient()} />);
+
+    fireEvent.click(getByRole("button", { name: "打开会话列表" }));
+    const dialog = getByRole("dialog");
+    expect(dialog).toBeTruthy();
+
+    // 桌面左栏同样渲染着一个「新建会话」按钮，断言要限定在抽屉内部
+    fireEvent.click(within(dialog).getByRole("button", { name: /新建会话/ }));
+    // 新建会话是常见的"选中后应关闭抽屉"操作
+    expect(queryByRole("dialog")).toBeNull();
   });
 });
 

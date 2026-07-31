@@ -17,6 +17,8 @@ export interface HeaderProps {
   onClearSession: () => void;
   /** F-008 手动重试：点击状态区重新探测 client.status() */
   onRetryStatus: () => void;
+  /** <768px 时左栏隐藏，改为提供菜单入口以左侧抽屉展示会话列表（F-013） */
+  onOpenSessions?: () => void;
 }
 
 function StatusItem({ label, state }: { label: string; state: ServiceState }) {
@@ -28,7 +30,7 @@ function StatusItem({ label, state }: { label: string; state: ServiceState }) {
   );
 }
 
-export function Header({ status, onClearSession, onRetryStatus }: HeaderProps) {
+export function Header({ status, onClearSession, onRetryStatus, onOpenSessions }: HeaderProps) {
   return (
     <header
       className="bg-content-bg border-b border-border-color fixed top-0 w-full z-50
@@ -36,6 +38,18 @@ export function Header({ status, onClearSession, onRetryStatus }: HeaderProps) {
                  text-text-secondary font-body-md"
     >
       <div className="flex items-center gap-4">
+        {onOpenSessions && (
+          <button
+            type="button"
+            onClick={onOpenSessions}
+            aria-label="打开会话列表"
+            className="flex md:hidden text-text-secondary hover:text-brand-primary transition-colors"
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">
+              menu
+            </span>
+          </button>
+        )}
         <h1 className="font-h2 text-h2 font-bold text-text-primary">智修客服</h1>
         <span className="text-text-muted font-code text-code border-l border-border-color pl-4 hidden md:inline">
           家电售后智能助手

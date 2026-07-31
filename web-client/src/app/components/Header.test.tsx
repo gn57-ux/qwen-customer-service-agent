@@ -92,4 +92,20 @@ describe("Header", () => {
     fireEvent.click(getByRole("button", { name: "重新探测服务状态" }));
     expect(onRetryStatus).toHaveBeenCalledOnce();
   });
+
+  it("不传 onOpenSessions 时不渲染菜单入口", () => {
+    const { queryByRole } = render(<Header status={statusOf("unknown")} onClearSession={() => {}} onRetryStatus={noop} />);
+    expect(queryByRole("button", { name: "打开会话列表" })).toBeNull();
+  });
+
+  it("传入 onOpenSessions 时渲染菜单入口，可见性为 md:hidden（F-013）", () => {
+    const onOpenSessions = vi.fn();
+    const { getByRole } = render(
+      <Header status={statusOf("unknown")} onClearSession={() => {}} onRetryStatus={noop} onOpenSessions={onOpenSessions} />,
+    );
+    const button = getByRole("button", { name: "打开会话列表" });
+    expect(button.className).toContain("md:hidden");
+    fireEvent.click(button);
+    expect(onOpenSessions).toHaveBeenCalledOnce();
+  });
 });

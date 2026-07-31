@@ -15,12 +15,22 @@ export interface MainChatProps {
   onCopy?: (text: string) => void;
   onRegenerate?: () => void;
   onFeedback?: (value: "up" | "down") => void;
+  onOpenEvidence?: () => void;
 }
 
-export function MainChat({ messages, isStreaming, onSend, onStop, onCopy, onRegenerate, onFeedback }: MainChatProps) {
+export function MainChat({
+  messages,
+  isStreaming,
+  onSend,
+  onStop,
+  onCopy,
+  onRegenerate,
+  onFeedback,
+  onOpenEvidence,
+}: MainChatProps) {
   return (
     <main className="flex-1 flex flex-col h-full bg-content-bg relative min-w-0">
-      <ChatHeader />
+      <ChatHeader onOpenEvidence={onOpenEvidence} />
       <MessageList messages={messages} onCopy={onCopy} onRegenerate={onRegenerate} onFeedback={onFeedback} />
       <Composer isStreaming={isStreaming} onSend={onSend} onStop={onStop} />
     </main>

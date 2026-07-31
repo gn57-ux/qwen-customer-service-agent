@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AssistantMessage } from "./AssistantMessage.tsx";
 import type { AssistantTurn } from "../chat-types.ts";
+import type { ChatResponseBody, OrderStatus } from "../../types.ts";
 
 afterEach(() => {
   cleanup();
@@ -10,6 +11,23 @@ afterEach(() => {
 
 function turnOf(overrides: Partial<AssistantTurn>): AssistantTurn {
   return { phase: "streaming", text: "", toolCalls: [], ...overrides };
+}
+
+function doneBody(overrides: Partial<ChatResponseBody> = {}): ChatResponseBody {
+  return {
+    reply: "占位回复",
+    route: "general",
+    toolCalls: [],
+    retrievedCount: 0,
+    returnedCount: 0,
+    traceId: "t1",
+    latencyMs: 1,
+    ...overrides,
+  };
+}
+
+function doneTurn(overrides: Partial<ChatResponseBody> = {}): AssistantTurn {
+  return { phase: "done", text: "", toolCalls: [], body: doneBody(overrides) };
 }
 
 describe("AssistantMessage", () => {
@@ -80,7 +98,7 @@ describe("AssistantMessage", () => {
       text: "",
       body: {
         reply: "结构化最终回复",
-        route: "general",
+        route: "repair",
         toolCalls: [],
         retrievedCount: 1,
         returnedCount: 1,
@@ -108,5 +126,100 @@ describe("AssistantMessage", () => {
       <AssistantMessage messageId="m1" turn={turnOf({ phase: "streaming", text: "生成中" })} />,
     );
     expect(container.querySelector('[id^="citation-"]')).toBeNull();
+  });
+
+  it("route=safety 时正文以安全卡呈现，话术就是 body.reply（F-004/AC-003）", () => {
+    const turn = doneTurn({ route: "safety", reply: "先不要自行拆机，请联系官方售后。" });
+    const { container, getByText } = render(<AssistantMessage messageId="m1" turn={turn} />);
+    expect(getByText("先不要自行拆机，请联系官方售后。")).toBeTruthy();
+    expect(container.querySelector(".bg-safety-bg")).toBeTruthy();
+    // 安全卡替换了普通段落，不应该同时出现两份正文
+    expect(container.querySelectorAll("p").length).toBe(1);
+  });
+
+  it("非 safety 场景不渲染安全卡，正文为普通段落", () => {
+    const turn = doneTurn({ route: "repair", reply: "维修建议正文" });
+    const { container, getByText } = render(<AssistantMessage messageId="m1" turn={turn} />);
+    expect(getByText("维修建议正文")).toBeTruthy();
+    expect(container.querySelector(".bg-safety-bg")).toBeNull();
+  });
+
+  it("route=order 且调用了 queryOrderTool 且 order 存在时渲染订单卡（F-001/AC-002a）", () => {
+    const order: OrderStatus = {
+      found: true,
+      details: {
+        orderId: "ORD1002",
+        status: null,
+        statusText: null,
+        createdAt: null,
+        carrier: null,
+        trackingNumber: null,
+        latestLogistics: null,
+        estimatedDelivery: null,
+        canCancel: null,
+        customerTip: null,
+      },
+    };
+    const turn = doneTurn({
+      route: "order",
+      toolCalls: [{ name: "queryOrderTool", arguments: {}, result: {} }],
+      order,
+    });
+    const { getByText } = render(<AssistantMessage messageId="m1" turn={turn} />);
+    expect(getByText("ORD1002")).toBeTruthy();
+  });
+
+  it("route=order 但未调用 queryOrderTool（追问场景）时不渲染订单卡（F-002/AC-002）", () => {
+    const turn = doneTurn({ route: "order", toolCalls: [], order: undefined, reply: "请提供订单号" });
+    const { queryByText, getByText } = render(<AssistantMessage messageId="m1" turn={turn} />);
+    expect(getByText("请提供订单号")).toBeTruthy();
+    expect(queryByText(/部分信息缺失|订单号/)).not.toBeNull(); // 只是正文里提到"订单号"，不是订单卡
+  });
+
+  it("引用角标图标按 route 区分：safety 用 security，其余用 description（F-003/F-004）", () => {
+    const sourcesArg: ChatResponseBody["sources"] = [
+      { title: "A", section: "s", sourceFile: "f", documentVersion: "v1", vectorScore: 0.5, rerankScore: null },
+    ];
+    const safetyTurn = doneTurn({ route: "safety", sources: sourcesArg });
+    const safety = render(<AssistantMessage messageId="m1" turn={safetyTurn} />);
+    expect(safety.container.querySelector("#citation-m1-0 .material-symbols-outlined")?.textContent).toBe("security");
+    safety.unmount();
+
+    const repairTurn = doneTurn({ route: "repair", sources: sourcesArg });
+    const repair = render(<AssistantMessage messageId="m1" turn={repairTurn} />);
+    expect(repair.container.querySelector("#citation-m1-0 .material-symbols-outlined")?.textContent).toBe(
+      "description",
+    );
+  });
+
+  it("route=general 时无角标/安全卡/订单卡，只有正文与操作行（F-005/AC-004）", () => {
+    const turn = doneTurn({
+      route: "general",
+      reply: "你好，有什么可以帮你？",
+      sources: [{ title: "A", section: "s", sourceFile: "f", documentVersion: "v1", vectorScore: 0.5, rerankScore: null }],
+    });
+    const { container, getByText } = render(<AssistantMessage messageId="m1" turn={turn} onRegenerate={() => {}} />);
+    expect(getByText("你好，有什么可以帮你？")).toBeTruthy();
+    expect(container.querySelector(".bg-safety-bg")).toBeNull();
+    expect(container.querySelector('[id^="citation-"]')).toBeNull();
+  });
+
+  it("error 阶段展示完整错误卡：图标+标题+message+traceId+重试按钮（F-008）", () => {
+    const onRegenerate = vi.fn();
+    const turn = turnOf({
+      phase: "error",
+      text: "已生成的部分",
+      traceId: "trace-err-1",
+      errorMessage: "上游服务异常",
+    });
+    const { getByText, getByRole } = render(
+      <AssistantMessage messageId="m1" turn={turn} onRegenerate={onRegenerate} />,
+    );
+    expect(getByText("已生成的部分")).toBeTruthy();
+    expect(getByText("回复生成失败")).toBeTruthy();
+    expect(getByText("上游服务异常")).toBeTruthy();
+    expect(getByText("trace-err-1")).toBeTruthy();
+    fireEvent.click(getByRole("button", { name: /重试/ }));
+    expect(onRegenerate).toHaveBeenCalledOnce();
   });
 });

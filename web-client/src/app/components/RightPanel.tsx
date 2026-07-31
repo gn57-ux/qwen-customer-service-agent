@@ -7,7 +7,12 @@
  *   2. 有消息但还没 done（streaming/error/aborted 且无 body）→ 只展示
  *      tool-result 累积出的临时链路节点，模式卡/引用来源不出现（design.md
  *      模块 3：这些字段只在结构化 body 里才有，流式阶段没有就是没有，不能猜）。
+ *      error 收尾额外追加一个红色「已中断 · 生成失败」节点（F-008）。
  *   3. done 且有 body → deriveEvidence(body) 全量覆盖重建。
+ *
+ * `EvidencePanelContent` 单独导出——feature 7 的右侧抽屉（<1100px）复用同一份
+ * 内容组件，只是外层容器不同，避免抽屉与右栏两份实现逐渐不一致（design.md
+ * 模块 4："关键：复用而非复制"）。
  */
 import type { AssistantTurn } from "../chat-types.ts";
 import { deriveEvidence, deriveInterimSteps, type EvidenceView } from "../evidence/derive.ts";
@@ -27,12 +32,9 @@ export interface RightPanelProps {
   messageId?: string;
 }
 
-export function RightPanel({ turn, messageId }: RightPanelProps) {
+export function EvidencePanelContent({ turn, messageId }: RightPanelProps) {
   return (
-    <aside
-      className="hidden min-[1100px]:flex w-[300px] xl:w-[320px] bg-sidebar-right-bg
-                 border-l border-border-color flex-col h-full flex-shrink-0"
-    >
+    <>
       <EvidenceHeader />
       {!turn ? (
         <>
@@ -46,7 +48,13 @@ export function RightPanel({ turn, messageId }: RightPanelProps) {
       ) : (
         <PanelBody
           view={{
-            steps: deriveInterimSteps(turn.toolCalls),
+            steps:
+              turn.phase === "error"
+                ? [
+                    ...deriveInterimSteps(turn.toolCalls),
+                    { label: "已中断 · 生成失败", tone: "safety", bold: true },
+                  ]
+                : deriveInterimSteps(turn.toolCalls),
             modes: [],
             sources: [],
             traceId: turn.traceId ?? "",
@@ -55,6 +63,17 @@ export function RightPanel({ turn, messageId }: RightPanelProps) {
           interim
         />
       )}
+    </>
+  );
+}
+
+export function RightPanel({ turn, messageId }: RightPanelProps) {
+  return (
+    <aside
+      className="hidden min-[1100px]:flex w-[300px] xl:w-[320px] bg-sidebar-right-bg
+                 border-l border-border-color flex-col h-full flex-shrink-0"
+    >
+      <EvidencePanelContent turn={turn} messageId={messageId} />
     </aside>
   );
 }
