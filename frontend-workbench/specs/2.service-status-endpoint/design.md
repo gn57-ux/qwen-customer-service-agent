@@ -5,6 +5,7 @@
 | 日期 | 版本 | 说明 |
 | ---- | ---- | ---- |
 | 2026-07-31 | v1 | 初始设计 |
+| 2026-07-31 | v3 | 修正模块 1 探测器表：`localModel` 探测对象改为 FastAPI `:8000/health`（判定 `status==="ok"`），非字面意义的 llama-server `:8002`（与 requirements.md v3 同步；跳过 v2 编号以保持两文件版本号对齐） |
 
 ## 项目架构
 
@@ -38,17 +39,23 @@ async function probe(name: string, fn: (signal: AbortSignal) => Promise<boolean>
 }
 ```
 
-四个下游探测：
+五个下游探测：
 
 | 探测器 | 目标 | 判定 |
 |---|---|---|
-| `probeLlamaServer` | llama-server `:8002` | HTTP 健康端点 2xx |
-| `probeQdrant` | Qdrant `:6333`（`rag/config.ts:57`） | 健康/集合存在检查 2xx |
-| `probeEmbedding` | Embedding `:11434/v1`（`rag/config.ts:59`） | 服务可达 2xx |
+| `probeLlamaServer` | `[v3 修正]` **FastAPI 正式推理入口**（`services/app.py`，默认 `:8000`）的 `/health`，**不是** llama-server `:8002` 本身 | HTTP 200 **且**响应体 `status === "ok"`；`not_loaded`/`degraded`/其他值均判为不可用（FastAPI `/health` 在这些状态下仍返回 200，必须解析 body） |
+| `probeQdrant` | Qdrant `:6333`（`rag/config.ts:57`） | 复用 `QdrantKnowledgeStore.health()`（REST `/readyz`） |
+| `probeEmbedding` | Embedding `:11434/v1`（`rag/config.ts:59`） | 命中 Ollama 的 `/v1/models`，确认配置的 `embeddingModel` 已加载（按 base name 双向归一化比较，兼容 Ollama 返回带 `:tag` 后缀的模型名） |
 | `probeReranker` | Reranker `:8787` | **复用现有 `LlamaCppReranker.health()`**（`rag/rerank.ts:110` 已实现 `/health`） |
-| `probeOrderService` | 订单后端 | 复用 `queryOrderTool` 所用的 base URL 的健康端点 |
+| `probeOrderService` | 订单后端（Mock `:8001`） | 复用 `queryOrderTool` 所用的 base URL 的健康端点 |
 
 > 复用 `rerank.ts` 既有 `RerankerHealth` 而非另写一套，避免两处判定不一致。
+
+> `[v3]` ⛔ **`localModel` 绝不探测 `:8002`**：llama-server 只在 FastAPI 进程内部转发，
+> 不应被任何客户端直连（既有架构约束，见 `agents/customer-service-agent.ts` 顶部注释）。
+> 探测 `:8002` 既违反这条约束，也会给出误导性信号——即使 llama-server 存活，
+> FastAPI 未加载模型/未通过 upstream 身份校验时，Agent 的真实生成请求依然会失败。
+> `:8002` 仍然计入前端禁连端口扫描清单（`8.F-005`），本条修正不影响那份清单。
 
 **并发执行**：
 

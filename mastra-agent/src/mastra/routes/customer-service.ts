@@ -18,6 +18,7 @@ import { registerApiRoute } from "@mastra/core/server";
 import { streamSSE } from "hono/streaming";
 
 import { buildContractExtras, newTraceId, type ChatResponseBody } from "../contract.ts";
+import { collectServiceStatus } from "../health/probes.ts";
 import { runAgentTurn, streamAgentTurn, type ToolCallRecord } from "../orchestration.ts";
 
 interface ChatRequestBody {
@@ -119,4 +120,14 @@ export const customerServiceStreamRoute = registerApiRoute("/customer-service/st
       }
     });
   },
+});
+
+/**
+ * 服务状态探测：恒返回 200。下游全挂也是三个 "error" 字段的正常业务结果，
+ * 不是接口错误——5xx 留给"这个端点自身故障"这一真正异常，让前端只需处理
+ * 一种成功形态（需求 §5.5 B-3、design.md「下游全挂返回 200 vs 5xx」）。
+ */
+export const customerServiceStatusRoute = registerApiRoute("/customer-service/status", {
+  method: "GET",
+  handler: async (c) => c.json(await collectServiceStatus(), 200),
 });

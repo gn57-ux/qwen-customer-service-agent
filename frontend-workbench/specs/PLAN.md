@@ -82,3 +82,5 @@
 | Embedding 默认 `http://127.0.0.1:11434/v1`（Ollama） | `rag/config.ts:59` |
 | route 通过 `registerApiRoute()` 注册，挂根路径（`/api` 为保留前缀） | `routes/customer-service.ts:17,44,73` |
 | `server.apiRoutes` 数组需登记新 route | `mastra/index.ts:15-16` |
+| **本地模型服务的正确探测/依赖对象是 FastAPI `:8000`（`LOCAL_LLM_BASE_URL`），不是 llama-server `:8002`**——`:8002` 只在 FastAPI 进程内部转发，Mastra/web-client 均不允许直连；FastAPI `/health` 在 `not_loaded`/`degraded` 时也返回 HTTP 200，判定必须解析 body 的 `status` 字段，不能只看 HTTP 状态码 | `agents/customer-service-agent.ts:8-12`、`services/app.py:486-516` `[2.v3]` |
+| Ollama 的 `/v1/models` 返回带 `:tag` 后缀的模型 id（如 `bge-m3:latest`），与不带 tag 的配置项（如 `bge-m3`）比对时需双向按 `:` 拆出 base name 再比较，不能只归一化一侧 | 实测于 `health/probes.ts` `matchesModelName()` `[2.v1.1]` |

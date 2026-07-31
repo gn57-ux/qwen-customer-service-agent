@@ -21,7 +21,7 @@
 
 import { MastraClient } from "@mastra/client-js";
 
-import type { ChatHistoryTurn, ChatResponseBody, StreamEvent } from "./types.ts";
+import type { ChatHistoryTurn, ChatResponseBody, ServiceStatusBody, StreamEvent } from "./types.ts";
 
 export interface CustomerServiceClientOptions {
   baseUrl: string;
@@ -49,6 +49,7 @@ export interface CustomerServiceClient {
     onEvent: (event: StreamEvent) => void,
     options?: StreamChatOptions,
   ): Promise<ChatResponseBody>;
+  status(): Promise<ServiceStatusBody>;
 }
 
 function abortError(): DOMException {
@@ -155,6 +156,10 @@ export function createCustomerServiceClient(options: CustomerServiceClientOption
         throw new Error("流式响应提前结束，没有收到 done 事件");
       }
       return done;
+    },
+
+    async status() {
+      return client.request<ServiceStatusBody>("/customer-service/status", { method: "GET" });
     },
   };
 }

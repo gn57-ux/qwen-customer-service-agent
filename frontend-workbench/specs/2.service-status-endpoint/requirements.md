@@ -16,6 +16,7 @@
 | ---- | ---- | ---- |
 | 2026-07-31 | v1 | 初始需求（由 2026-07-31 评审决策 B 升级而来） |
 | 2026-07-31 | v2 | 关闭 Embedding 端口开放问题（11434 已纳入禁连清单，门禁 5→6 个端口） |
+| 2026-07-31 | v3 | 修正 F-005：`localModel` 探测对象改为 FastAPI 正式推理入口，非字面意义的 llama-server :8002（Stop hook CR 指出该口径此前只记在 tasks.md/LESSONS，未同步权威 specs，会误导 Feature 4/8 按旧口径实现或验收——现已把这里定为唯一权威） |
 
 ## 用户故事
 
@@ -32,7 +33,12 @@
    - **Reranker 不可用但基础检索（Qdrant + Embedding）可用 → `degraded`**
    - Qdrant 或 Embedding 不可用（基础检索不可用）→ `error`
    - 探测未完成 / 无法判定 → `unknown`
-5. [F-005] `localModel` 探测本地推理服务（llama-server），可用 `online`，不可用 `error`。
+5. [F-005] `[v3 修正]` `localModel` 探测的是 **FastAPI 的正式推理入口**（`services/app.py`，默认 `:8000`）的 `/health`，**不是** llama-server（`:8002`）本身：
+   - ⛔ **`:8002` 只在 FastAPI 进程内部转发，Mastra 与 web-client 均不允许直连它**——这是既有架构约束（见 `agents/customer-service-agent.ts` 顶部注释），不是本 feature 新引入的限制，本探测同样必须遵守；
+   - 判定标准为响应体里的 `status === "ok"`，**不是**单纯 HTTP 2xx——FastAPI 的 `/health` 在 `not_loaded`/`degraded` 时也返回 HTTP 200，只有 body 的 `status` 字段能反映真实可用性；
+   - HTTP 200 但 `status` 为 `not_loaded`/`degraded`/其他非 `"ok"` 值，一律判为不可用（`localModel: "error"`）；
+   - 探测失败（网络错误、超时、HTTP 非 2xx、JSON 解析失败）同样判为 `error`；
+   - `:8002` 仍然计入前端禁连端口扫描清单（`8.F-005`），本条不改变那份清单。
 6. [F-006] `orderService` 探测订单后端，可用 `online`，不可用 `error`。
 7. [F-007] 每个下游探测**独立超时**（≤ 2s），并发执行，`/status` 整体响应 ≤ 3s；任一下游挂起不得阻塞整体响应。
 8. [F-008] 响应体**必须脱敏**：只返回四态枚举，禁止透出下游 URL、端口、IP、主机名、堆栈、原始异常消息；详细错误只写服务端日志。
@@ -62,7 +68,8 @@
 
 - feature `1.contract-retrieval-counts`（契约文件同源改动，避免冲突）
 - 现有 `LlamaCppReranker.health()` 与 `/health` 探测（`rag/rerank.ts:46,110`，可复用）
-- Qdrant `:6333`、Reranker `:8787`、Embedding `:11434`、llama-server `:8002`、订单后端（`:8000`/`:8001`）
+- Qdrant `:6333`、Reranker `:8787`、Embedding `:11434`、**FastAPI `:8000`（`localModel` 的探测对象，`[v3]`）**、订单后端（Mock `:8001`）
+- `[v3]` llama-server `:8002` **不是**依赖对象——它只在 FastAPI 进程内部转发，本 feature 与前端均不直连它
 
 ## 开放问题
 

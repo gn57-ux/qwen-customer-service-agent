@@ -171,3 +171,16 @@ export function buildContractExtras(toolCalls: ToolCallRecord[]): {
 export function newTraceId(): string {
   return `trace-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
+
+/**
+ * GET /customer-service/status 的响应契约。四态枚举，`unknown` 只由**客户端**
+ * 在探测尚未完成时使用——服务端探测完成后必有确定结论，不会返回 `unknown`。
+ */
+export type ServiceState = "unknown" | "online" | "degraded" | "error";
+
+export interface ServiceStatusBody {
+  localModel: ServiceState;
+  /** 聚合 Qdrant + Embedding + Reranker：见 health/probes.ts 的 aggregateKnowledgeBase() */
+  knowledgeBase: ServiceState;
+  orderService: ServiceState;
+}

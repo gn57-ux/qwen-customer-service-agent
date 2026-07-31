@@ -16,7 +16,7 @@
     "rag:search": "node --env-file-if-exists=../.env --import tsx src/rag/search.ts",
     "rag:test": "node --env-file-if-exists=../.env --import tsx --test src/rag/rag.test.ts",
     "rerank:test": "node --env-file-if-exists=../.env --import tsx --test src/rag/rerank.test.ts",
-    "agent:test:unit": "node --experimental-test-module-mocks --env-file-if-exists=../.env --import tsx --test src/mastra/tools/query-order-tool.test.ts src/mastra/orchestration.test.ts src/mastra/contract.test.ts src/mastra/routes/customer-service.route-assembly.test.ts",
+    "agent:test:unit": "node --experimental-test-module-mocks --env-file-if-exists=../.env --import tsx --test src/mastra/tools/query-order-tool.test.ts src/mastra/orchestration.test.ts src/mastra/contract.test.ts src/mastra/routes/customer-service.route-assembly.test.ts src/mastra/health/probes.test.ts src/mastra/routes/customer-service.status-route.test.ts",
     "agent:test:live": "node --env-file-if-exists=../.env --import tsx --test src/mastra/tools/search-knowledge-base-tool.test.ts src/mastra/agent.e2e.test.ts",
     "agent:test": "npm run agent:test:unit && npm run agent:test:live",
     "test": "npm run typecheck && npm run agent:test:unit"

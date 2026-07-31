@@ -57,6 +57,19 @@ async function main(): Promise<number> {
   console.log(`Mastra Client smoke：${MASTRA_BASE_URL}`);
   console.log("=".repeat(78));
 
+  console.log("\n0. status()：服务状态探测");
+  const status = await client.status();
+  const validStates = ["unknown", "online", "degraded", "error"];
+  check("localModel 是合法四态之一", validStates.includes(status.localModel), status.localModel);
+  check("knowledgeBase 是合法四态之一", validStates.includes(status.knowledgeBase), status.knowledgeBase);
+  check("orderService 是合法四态之一", validStates.includes(status.orderService), status.orderService);
+  const statusJson = JSON.stringify(status);
+  check(
+    "status() 响应体已脱敏：不含端口号/URL 关键字",
+    !/:(8000|8001|8002|6333|8787|11434)\b/.test(statusJson) && !/https?:\/\//.test(statusJson),
+    statusJson,
+  );
+
   console.log("\n1. 问候：不调用工具");
   const greet = await client.chat("你好");
   check("route=general", greet.route === "general", greet.route);

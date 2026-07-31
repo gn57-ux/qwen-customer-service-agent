@@ -46,15 +46,32 @@ export interface ChatResponseBody {
   reply: string;
   route: RouteCategory;
   toolCalls: ToolCallRecord[];
+  /** 只有调用过 searchKnowledgeBase 时才有值 */
   sources?: KnowledgeSourceItem[];
   reranked?: boolean;
   degraded?: boolean;
   degradedReason?: string;
+  /** 只有调用过 queryOrderTool 时才有值（多次调用取最后一次） */
   order?: OrderStatus;
+  /** 向量检索实际命中数；未调用 searchKnowledgeBase 时为 0 */
   retrievedCount: number;
+  /** 最终返回条数；未调用 searchKnowledgeBase 时为 0 */
   returnedCount: number;
   traceId: string;
   latencyMs: number;
+}
+
+/**
+ * GET /customer-service/status 的响应契约。四态枚举，`unknown` 只由**客户端**
+ * 在探测尚未完成时使用——服务端探测完成后必有确定结论，不会返回 `unknown`。
+ */
+export type ServiceState = "unknown" | "online" | "degraded" | "error";
+
+export interface ServiceStatusBody {
+  localModel: ServiceState;
+  /** 聚合 Qdrant + Embedding + Reranker */
+  knowledgeBase: ServiceState;
+  orderService: ServiceState;
 }
 
 export interface ChatHistoryTurn {
