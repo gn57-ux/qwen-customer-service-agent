@@ -1,12 +1,13 @@
 # Mastra Client 接口闭环：真实调用链与前端契约
 
-本文档记录前端（React/Vite，未来阶段）必须走的调用链、Mastra 原生能力的实测
-依据，以及 `web-client/`（仓库根目录下的最小共享客户端包）的用法。
+本文档记录前端（`web-client/src/app/`，React + Vite + Tailwind，已实现）必须
+走的调用链、Mastra 原生能力的实测依据，以及 `web-client/`（仓库根目录下的共享
+客户端包 + React 应用）的用法。
 
 ## 一、真实调用链
 
 ```
-React/Vite（未来阶段，本轮未做）
+web-client/src/app/（React/Vite 工作台 UI）
   → @mastra/client-js 的 MastraClient.request()（web-client/src/client.ts 封装）
   → Mastra 服务（mastra dev，默认 4111）的自定义 route：
       POST /customer-service/chat    非流式
@@ -77,20 +78,24 @@ endpoint（`/api/agents/customerServiceAgent/generate`）——后者会跳过
   **未采用**。
 - **C（客户端不支持自定义 route，停止实施）**——不成立，A 已验证可行。
 
-## 四、`web-client/` 最小共享客户端包
+## 四、`web-client/` 共享客户端包 + React 工作台应用
 
 ```
 web-client/
-├── package.json          # 只依赖 @mastra/client-js@1.33.0（exact）
+├── package.json          # 依赖 @mastra/client-js@1.33.0（exact）+ react/vite/vitest
 ├── tsconfig.json
 ├── src/
-│   ├── types.ts           # 与 mastra-agent/src/mastra/contract.ts 手动保持一致的类型镜像
-│   └── client.ts          # createCustomerServiceClient({baseUrl}) → {chat, streamChat}
-└── scripts/
-    └── smoke.ts            # 真实服务 smoke 测试，npm run smoke
+│   ├── types.ts           # 与 mastra-agent/src/mastra/contract.ts 保持一致的类型镜像
+│   │                       # （字段一致性由 mastra-agent 的 contract-mirror.test.ts 自动校验）
+│   ├── client.ts          # createCustomerServiceClient({baseUrl}) → {chat, streamChat, status}
+│   └── app/               # React + Vite + Tailwind 工作台 UI（详见 web-client/README.md）
+├── scripts/
+│   ├── smoke.ts            # 真实服务 smoke 测试，npm run smoke
+│   ├── gate-no-direct.sh、gate-no-hardcoded-count.sh、gate-assets.sh  # 质量门禁
+└── tailwind.config.ts     # 逐字迁移自 Stitch 设计稿的设计令牌
 ```
 
-用法（供未来 React/Vite 项目参考，本轮不做 UI）：
+用法：
 
 ```ts
 import { createCustomerServiceClient } from "customer-service-client/src/client.ts";
@@ -130,7 +135,15 @@ interface ChatResponseBody {
   order?: {                          // 只有调用过 queryOrderTool 才有（取最后一次）
     found: boolean; partial?: boolean; missingFields?: string[];
     error?: "not_found" | "timeout" | "server_error" | "network_error";
+    details?: {                      // 类型化白名单，前端只读这里，⛔ 不解析泛型 toolCalls[].result
+      orderId: string | null; status: string | null; statusText: string | null;
+      createdAt: string | null; carrier: string | null; trackingNumber: string | null;
+      latestLogistics: string | null; estimatedDelivery: string | null;
+      canCancel: boolean | null; customerTip: string | null;
+    };
   };
+  retrievedCount: number;            // 向量检索实际命中数；未调用 searchKnowledgeBase 时为 0
+  returnedCount: number;             // 最终返回条数；未调用 searchKnowledgeBase 时为 0
   traceId: string;
   latencyMs: number;
 }
@@ -163,11 +176,14 @@ data: {"message": "...", "traceId": "..."}
 ## 六、已知限制
 
 1. **`web-client` 与 `mastra-agent` 的契约类型是手动镜像，不是共享编译单元**——
-   两边各自维护一份 `types.ts`/`contract.ts`，改字段要同步改两处。本轮范围
-   小，暂不引入 monorepo workspace 工具来自动同步；如果后续契约字段变多，
-   值得评估用 npm workspaces 把两者接起来。
-2. **`web-client` 没有自己的 UI**，任务本轮明确不做完整 UI，只交付客户端 +
-   smoke 脚本。
+   两边各自维护一份 `types.ts`/`contract.ts`，改字段要同步改两处。
+   `mastra-agent/src/mastra/contract-mirror.test.ts` 自动校验两边字段名/可选
+   标记/类型（含引用别名解析）完全一致，忘记同步会在 `npm run test` 时报错，
+   不再是纯人工 diff。暂不引入 monorepo workspace 工具来自动同步；如果后续
+   契约字段变多，值得评估用 npm workspaces 把两者接起来。
+2. **`web-client/src/app/` 是完整的 React + Vite + Tailwind 工作台 UI**（三栏
+   布局、流式对话、处理依据面板、四类业务场景、响应式抽屉），详见
+   `web-client/README.md`。
 3. **流式路径的工具事件顺序**：强制路由（order/repair）时 `tool-result` 一定
    在第一个 `text-delta` 之前（工具在流式合成开始前就已经真实执行完毕）；
    不强制路由（safety/general）时，Mastra 的 `stream()` 内部循环理论上也可能
