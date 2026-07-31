@@ -7,3 +7,4 @@
 - [发现 specs 与真实架构不符时，必须改权威 requirements/design，不能只记在 tasks.md](specs-drift-must-fix-authoritative-docs.md) — specs 纠错流程：改代码只是第一步，权威文档要同步改版本号 | tags: specs,requirements,design,tasks,documentation,review,service-status
 - [归一化比较要双向做；第三方健康检查端点别默认"HTTP 2xx=健康"](bidirectional-normalization-and-health-semantics.md) — Ollama tag 双向归一化 + FastAPI health body 判定的两个踩坑 | tags: normalization,health-check,ollama,fastapi,probe,testing
 - [给不支持外部 AbortSignal 的既有函数套超时上限，用 Promise.race 不用改造它](promise-race-timeout-wrapper.md) — probe() 包装器的通用超时模式 | tags: timeout,promise-race,abort-signal,health-check,probe
+- [注释里写"禁止的字面量"要用转述，避免被门禁正则误判为违规](comments-avoid-gate-regex-literals.md) — Feature 8 门禁扫描不分注释与代码，写规则说明要用转述 | tags: documentation,comments,gate,regex,false-positive,quality-gates
