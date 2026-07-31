@@ -44,3 +44,14 @@
 **教训**：写文档/注释提醒"禁止使用 X"时，如果 X 恰好是某个门禁正则会匹配的字符串（端口号、函数名、危险 API 名），要么用转述避开字面量，要么确认门禁扫描时排除注释行——本项目选择前者（改注释），因为 Feature 8 的扫描脚本本来就没有排除注释的逻辑，扫描全部源码文本更简单可靠，比教每个人"注释要用转述"更省心的是让扫描脚本本身排除注释，但这个决定影响 Feature 8 的实现，本 feature 阶段选择成本最低的一侧（改注释）先解决。**Feature 8 实现门禁扫描脚本时应意识到这个假阳性来源**，评估是否需要排除注释/字符串字面量，或者继续要求全仓库注释都用转述规避。
 
 **技术要点**：Vite + React 19 + Tailwind v3（非 v4——v4 的 CSS-first `@theme` 配置与本项目 design.md 指定的 `tailwind.config.ts` + `postcss.config.js` 架构不匹配，选 v3 保持与 specs 描述一致）+ Vitest + jsdom 的标准脚手架组合，`npm run build` 产物需要 `.gitignore` 里加 `dist/`（本仓库此前缺失这条规则，若不补会把构建产物提交进去）。
+
+## 2026-07-31 — Feature 4: workbench-shell-layout
+
+**Stop hook CR 三轮才过，两轮各揪出一个共性问题，对 feature 5/6/7 的交互组件都适用：**
+
+1. **轮询与手动/事件触发的 refresh 并发时，慢的旧请求可能在新请求之后落地并覆盖状态。** 第一版 `useServiceStatus()` 的 `refresh()` 没有任何并发保护——`useEffect` 挂载探测、`setInterval` 轮询、未来 feature 5 的聊天 `done`/`error` 回调都会调用同一个 `refresh()`，一旦旧请求比新请求慢，`setData()`/`setLoading(false)` 会按到达顺序而非发起顺序生效，产生"新状态被旧状态覆盖"或"明明有更新的请求在途却提前显示 loading=false"的假象。**教训**：任何"同一个异步刷新函数会被多处并发调用"的 hook，必须在发起时记一个自增的 request id（或用 `AbortController`），回调里比对"我还是不是最新一次请求"再决定是否写 state，不能假设调用方会自己做防抖/排队。
+2. **图标按钮的可访问名称：小屏幕文字用 `hidden` 隐藏后，唯一可见内容是 Material Symbols 的 ligature 文本（如 `delete`），屏幕阅读器会读出这个实现细节而不是中文语义。** 同理，纯 `onClick` 的 `<li>` 对键盘/辅助技术不可聚焦、不可激活。**教训**：Stitch 设计稿里"图标 + `hidden md:inline` 文案"和"可点击的非按钮元素（`<li>`/`<div onClick>`）"这两种模式在本项目会反复出现（feature 5 的发送按钮、feature 6 的引用来源 chip 等）——落地时统一按此处理：可交互的列表项一律用真实 `<button>`（配 `aria-current`/`aria-selected` 标记激活态），纯图标按钮补 `aria-label`，图标 `<span>` 加 `aria-hidden="true"`。
+
+**技术要点（可复用）**：
+- 并发防覆盖的最小实现：`useRef` 计数器，`refresh()` 入口 `const requestId = ++idRef.current`，每个 `setState` 前判断 `requestId === idRef.current` 才生效；无需引入 `AbortController` 或额外依赖。
+- React Testing Library 的 `render()` 返回的 `getByText`/`getByRole` 默认查询整个 `document.body`，不局限于自己的 `container`——同一个 `it()` 里渲染两次而不 `unmount()`/`cleanup()` 会导致重复元素报错；测试文件必须在 `afterEach` 里调用 `cleanup()`（或手动 `unmount()`），本项目此前的 App.test.tsx 用 `document.body.innerHTML = ""` 也能work，但更推荐官方 `cleanup()`。

@@ -8,3 +8,5 @@
 - [归一化比较要双向做；第三方健康检查端点别默认"HTTP 2xx=健康"](bidirectional-normalization-and-health-semantics.md) — Ollama tag 双向归一化 + FastAPI health body 判定的两个踩坑 | tags: normalization,health-check,ollama,fastapi,probe,testing
 - [给不支持外部 AbortSignal 的既有函数套超时上限，用 Promise.race 不用改造它](promise-race-timeout-wrapper.md) — probe() 包装器的通用超时模式 | tags: timeout,promise-race,abort-signal,health-check,probe
 - [注释里写"禁止的字面量"要用转述，避免被门禁正则误判为违规](comments-avoid-gate-regex-literals.md) — Feature 8 门禁扫描不分注释与代码，写规则说明要用转述 | tags: documentation,comments,gate,regex,false-positive,quality-gates
+- [并发 refresh 需用自增 request id 防止旧请求覆盖新状态](stale-concurrent-refresh-must-guard-by-request-id.md) — effect+轮询+用户交互多处触发同一刷新函数时的竞态防护模式 | tags: react-hook,concurrency,race-condition,polling,refresh
+- [Stitch 设计稿的图标按钮/可点击列表项要补键盘与屏幕阅读器语义](icon-only-controls-need-real-buttons-and-aria-label.md) — li-onclick 改真实 button + aria-current；图标按钮补 aria-label + 图标 aria-hidden | tags: accessibility,a11y,aria-label,aria-hidden,keyboard,button
