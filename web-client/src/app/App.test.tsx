@@ -28,18 +28,18 @@ describe("App", () => {
   });
 
   it("挂载不抛出异常", () => {
-    expect(() => render(<App />)).not.toThrow();
+    expect(() => render(<App client={fakeClient()} />)).not.toThrow();
   });
 
   it("根容器具备 h-screen + overflow-hidden（body 级不滚动的结构前提）", () => {
-    const { container } = render(<App />);
+    const { container } = render(<App client={fakeClient()} />);
     const root = container.firstElementChild as HTMLElement;
     expect(root.className).toContain("h-screen");
     expect(root.className).toContain("overflow-hidden");
   });
 
   it("三栏骨架的断点显隐类与设计稿一致（左栏 md、右栏 min-[1100px]）", () => {
-    const { container } = render(<App />);
+    const { container } = render(<App client={fakeClient()} />);
     const asides = container.querySelectorAll("aside");
     expect(asides.length).toBe(2);
     expect(asides[0]!.className).toContain("md:flex");
