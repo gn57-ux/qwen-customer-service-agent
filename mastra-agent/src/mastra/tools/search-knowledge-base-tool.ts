@@ -66,6 +66,75 @@ const resultItemSchema = z.object({
   text: z.string(),
 });
 
+export interface SearchResultItem {
+  title: string;
+  section: string;
+  sourceFile: string;
+  documentVersion: string;
+  vectorScore: number;
+  rerankScore: number | null;
+  text: string;
+}
+
+export interface SearchKnowledgeBaseResult {
+  reranked: boolean;
+  degraded: boolean;
+  degradedReason?: string;
+  retrievedCount: number;
+  returnedCount: number;
+  results: SearchResultItem[];
+}
+
+/**
+ * 纯结果组装函数：接收已经召回的 hits，决定 reranked/degraded/retrievedCount/
+ * returnedCount/results 四类分支的最终形状。retrievedCount 恒等于 hits.length
+ * （调用方传入的真实召回数组长度），returnedCount 恒等于最终 results.length——
+ * 不引用 RECALL_TOP_N/FINAL_TOP_K 配置值。
+ *
+ * 从 execute() 中提取出来是为了让 hits=[]（空召回）等分支可以在测试里直接传入
+ * 一个真实的空数组触发，而不必依赖真实 Qdrant 返回空结果这种不可控条件——
+ * 不改变召回（store.query）与重排（reranker.rerank）本身的调用方式或行为。
+ */
+export async function assembleSearchResult(query: string, hits: StoreHit[]): Promise<SearchKnowledgeBaseResult> {
+  if (hits.length === 0) {
+    return { reranked: false, degraded: false, retrievedCount: 0, returnedCount: 0, results: [] };
+  }
+
+  const byId = new Map(hits.map((h) => [h.id, h]));
+  const docs: RerankDocument[] = hits.map((h) => ({ id: h.id, text: str(h.payload, "text") }));
+
+  const reranker = createReranker(loadRerankerConfig());
+  const rr = await reranker.rerank(query, docs, FINAL_TOP_K);
+
+  const toItem = (hit: StoreHit, rerankScore: number | null): SearchResultItem => ({
+    title: str(hit.payload, "title"),
+    section: str(hit.payload, "section"),
+    sourceFile: str(hit.payload, "source_file"),
+    documentVersion: str(hit.payload, "document_version"),
+    vectorScore: hit.score,
+    rerankScore,
+    text: str(hit.payload, "text"),
+  });
+
+  if (rr.status === "ok") {
+    const results = rr.ranked.map((item) => toItem(byId.get(item.id)!, item.rerankScore));
+    return { reranked: true, degraded: false, retrievedCount: hits.length, returnedCount: results.length, results };
+  }
+
+  // unavailable / disabled：明确降级，返回向量顺序 Top{FINAL_TOP_K}，
+  // rerankScore 全部为 null，绝不用向量名次冒充已完成的 Rerank。
+  const results = hits.slice(0, FINAL_TOP_K).map((hit) => toItem(hit, null));
+  return {
+    reranked: false,
+    degraded: true,
+    degradedReason:
+      rr.reason ?? (rr.status === "disabled" ? "RERANK_ENABLED=false，本次未执行 Rerank" : "Reranker 不可用"),
+    retrievedCount: hits.length,
+    returnedCount: results.length,
+    results,
+  };
+}
+
 export const searchKnowledgeBaseTool = createTool({
   id: "search-knowledge-base",
   description:
@@ -79,47 +148,14 @@ export const searchKnowledgeBaseTool = createTool({
     reranked: z.boolean().describe("true 表示结果已经过独立 Reranker 重排"),
     degraded: z.boolean().describe("true 表示 Reranker 不可用或被显式关闭，结果只是向量召回顺序"),
     degradedReason: z.string().optional(),
+    retrievedCount: z.number().int().min(0).describe("向量检索实际命中数，等于 store.query() 返回的 hits.length"),
+    returnedCount: z.number().int().min(0).describe("最终返回条数，等于 results.length"),
     results: z.array(resultItemSchema),
   }),
   execute: async ({ query }) => {
     const { embedder, store } = await getClients();
     const [vector] = await embedder.embed([query]);
     const hits = await store.query(vector!, RECALL_TOP_N);
-
-    if (hits.length === 0) {
-      return { reranked: false, degraded: false, results: [] };
-    }
-
-    const byId = new Map(hits.map((h) => [h.id, h]));
-    const docs: RerankDocument[] = hits.map((h) => ({ id: h.id, text: str(h.payload, "text") }));
-
-    const reranker = createReranker(loadRerankerConfig());
-    const rr = await reranker.rerank(query, docs, FINAL_TOP_K);
-
-    const toItem = (hit: StoreHit, rerankScore: number | null) => ({
-      title: str(hit.payload, "title"),
-      section: str(hit.payload, "section"),
-      sourceFile: str(hit.payload, "source_file"),
-      documentVersion: str(hit.payload, "document_version"),
-      vectorScore: hit.score,
-      rerankScore,
-      text: str(hit.payload, "text"),
-    });
-
-    if (rr.status === "ok") {
-      const results = rr.ranked.map((item) => toItem(byId.get(item.id)!, item.rerankScore));
-      return { reranked: true, degraded: false, results };
-    }
-
-    // unavailable / disabled：明确降级，返回向量顺序 Top{FINAL_TOP_K}，
-    // rerankScore 全部为 null，绝不用向量名次冒充已完成的 Rerank。
-    const results = hits.slice(0, FINAL_TOP_K).map((hit) => toItem(hit, null));
-    return {
-      reranked: false,
-      degraded: true,
-      degradedReason:
-        rr.reason ?? (rr.status === "disabled" ? "RERANK_ENABLED=false，本次未执行 Rerank" : "Reranker 不可用"),
-      results,
-    };
+    return assembleSearchResult(query, hits);
   },
 });

@@ -21,11 +21,25 @@ export interface KnowledgeSourceItem {
   rerankScore: number | null;
 }
 
+export interface OrderDetails {
+  orderId: string | null;
+  status: string | null;
+  statusText: string | null;
+  createdAt: string | null;
+  carrier: string | null;
+  trackingNumber: string | null;
+  latestLogistics: string | null;
+  estimatedDelivery: string | null;
+  canCancel: boolean | null;
+  customerTip: string | null;
+}
+
 export interface OrderStatus {
   found: boolean;
   partial?: boolean;
   missingFields?: string[];
   error?: "not_found" | "timeout" | "server_error" | "network_error";
+  details?: OrderDetails;
 }
 
 export interface ChatResponseBody {
@@ -37,6 +51,8 @@ export interface ChatResponseBody {
   degraded?: boolean;
   degradedReason?: string;
   order?: OrderStatus;
+  retrievedCount: number;
+  returnedCount: number;
   traceId: string;
   latencyMs: number;
 }
