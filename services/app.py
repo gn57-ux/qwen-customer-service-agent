@@ -97,6 +97,35 @@ class ChatCompletionRequest(BaseModel):
     tool_choice: Any = None
 
 
+# llama_cpp backend 下唯一被允许转发给 llama-server 的 function-calling 工具名。
+# 已用真实请求核实 llama-server 对这个模型能原生返回结构化 message.tool_calls
+# （给定 tools 后 finish_reason=tool_calls，不需要在 FastAPI 里再解析文本标签）；
+# 白名单只挡"调用方声明了白名单外的工具"这一种情况，不做其他改写。
+ALLOWED_TOOL_NAMES = frozenset({"queryOrderTool", "searchKnowledgeBase"})
+
+
+def validate_tools_whitelist(tools: list[dict[str, Any]] | None, tool_choice: Any) -> None:
+    """只允许白名单工具透传给上游；出现白名单外的工具名一律拒绝（400），
+    不静默丢弃、不静默放行——调用方应该先修正请求，而不是让服务器悄悄改写语义。"""
+    if tools:
+        for tool in tools:
+            fn = tool.get("function") if isinstance(tool, dict) else None
+            name = fn.get("name") if isinstance(fn, dict) else None
+            if name not in ALLOWED_TOOL_NAMES:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"不允许的工具：{name!r}，只允许 {sorted(ALLOWED_TOOL_NAMES)}",
+                )
+    if isinstance(tool_choice, dict):
+        fn = tool_choice.get("function")
+        name = fn.get("name") if isinstance(fn, dict) else None
+        if name is not None and name not in ALLOWED_TOOL_NAMES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"tool_choice 指定了不允许的工具：{name!r}，只允许 {sorted(ALLOWED_TOOL_NAMES)}",
+            )
+
+
 class SimpleChatRequest(BaseModel):
     """POST /chat 的简化输入：不要求调用方拼 OpenAI messages 结构。"""
 
@@ -282,6 +311,7 @@ def generate_stream_sync(tokenizer: Any, model: Any, prompt: str, temperature: f
 def build_upstream_payload(
     model_name: str, messages: list[ChatMessage], temperature: float, top_p: float,
     max_tokens: int, stream: bool,
+    tools: list[dict[str, Any]] | None = None, tool_choice: Any = None,
 ) -> dict[str, Any]:
     # 调用方必须已经过 normalize_messages_for_upstream()；这里是最后一道硬性
     # 保险，上游 payload 中绝不能残留内部兼容别名 role="observation"。
@@ -289,7 +319,7 @@ def build_upstream_payload(
         "build_upstream_payload 收到未规范化的 role=observation 消息，"
         "调用方必须先经过 normalize_messages_for_upstream()"
     )
-    return {
+    payload: dict[str, Any] = {
         "model": model_name,
         "messages": [m.model_dump(exclude_none=True) for m in messages],
         "temperature": temperature,
@@ -297,6 +327,14 @@ def build_upstream_payload(
         "max_tokens": max_tokens,
         "stream": stream,
     }
+    # 只在调用方真的带了 tools/tool_choice 时才转发，不主动伪造；已用真实请求
+    # 核实 llama-server 对这个模型能原生返回结构化 message.tool_calls
+    # （finish_reason=tool_calls），不需要 FastAPI 再解析 <tool_call> 文本标签。
+    if tools:
+        payload["tools"] = tools
+    if tool_choice is not None:
+        payload["tool_choice"] = tool_choice
+    return payload
 
 
 # ---------------------------------------------------------------------------
@@ -551,6 +589,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def chat_completions(request: ChatCompletionRequest):
         require_loaded()
         _check_common_bounds(request.messages, request.max_tokens)
+        validate_tools_whitelist(request.tools, request.tool_choice)
 
         if settings.llm_backend == BACKEND_LLAMA_CPP:
             await require_upstream_ready()
@@ -560,6 +599,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             payload = build_upstream_payload(
                 settings.model_name, prepared, request.temperature, request.top_p,
                 request.max_tokens, request.stream,
+                tools=request.tools, tool_choice=request.tool_choice,
             )
 
             if request.stream:

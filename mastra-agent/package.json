@@ -16,7 +16,10 @@
     "rag:search": "node --env-file-if-exists=../.env --import tsx src/rag/search.ts",
     "rag:test": "node --env-file-if-exists=../.env --import tsx --test src/rag/rag.test.ts",
     "rerank:test": "node --env-file-if-exists=../.env --import tsx --test src/rag/rerank.test.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "agent:test:unit": "node --env-file-if-exists=../.env --import tsx --test src/mastra/tools/query-order-tool.test.ts src/mastra/orchestration.test.ts",
+    "agent:test:live": "node --env-file-if-exists=../.env --import tsx --test src/mastra/tools/search-knowledge-base-tool.test.ts src/mastra/agent.e2e.test.ts",
+    "agent:test": "npm run agent:test:unit && npm run agent:test:live",
+    "test": "npm run typecheck && npm run agent:test:unit"
   },
   "keywords": [],
   "author": "",
