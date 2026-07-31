@@ -5,6 +5,7 @@
 | 日期 | 版本 | 说明 |
 | ---- | ---- | ---- |
 | 2026-07-31 | v1 | 初始任务 |
+| 2026-07-31 | v1.1 | 实现完成。T-001 的 `test` 脚本落地为 `vitest run`，为使其真正可运行补了 `vitest.config.ts`（jsdom 环境）与 `src/app/App.test.tsx` 冒烟测试（5 项：挂载不抛错、根容器 h-screen+overflow-hidden、三栏断点显隐类、useClient() 脱离 Provider 报错、mock client 注入生效）——这两个文件不在原 6 个 task 的显式清单里，但属于让 T-001 的验收标准（`test` 脚本可用）成立所必需的最小追加。另外补了 `.gitignore` 的 `dist/`/`.vite/` 条目（此前缺失，`vite build` 产物会被误提交）。 |
 
 ## 项目信息
 
@@ -16,18 +17,18 @@
 
 ### 功能 1: 构建配置
 
-- [ ] T-001: `package.json` 追加 react/react-dom/vite/@vitejs/plugin-react/tailwindcss/vitest/@testing-library/react 依赖与 `dev`/`build`/`test` 脚本，保留现有 `typecheck`/`smoke` ~30min
-- [ ] T-002: 新增 `vite.config.ts`、`postcss.config.js`、`index.html`（含三组字体 link），并扩展 `tsconfig.json` 的 jsx 与 DOM lib ~30min
+- [x] T-001: `package.json` 追加 react/react-dom/vite/@vitejs/plugin-react/tailwindcss/vitest/@testing-library/react 依赖与 `dev`/`build`/`test` 脚本，保留现有 `typecheck`/`smoke` ~30min
+- [x] T-002: 新增 `vite.config.ts`、`postcss.config.js`、`index.html`（含三组字体 link），并扩展 `tsconfig.json` 的 jsx 与 DOM lib ~30min
 
 ### 功能 2: 设计令牌
 
-- [ ] T-003: 新增 `tailwind.config.ts`，逐字移植 screen 内联 `theme.extend` 的 19 个 colors 与 borderRadius 全 0 ~30min
-- [ ] T-004: 移植 `fontFamily`/`fontSize`（含 lineHeight/fontWeight/letterSpacing 元组）/`spacing` 三组令牌 ~15min
-- [ ] T-005: 新增 `src/app/styles.css`：Tailwind 三指令 + 全局 0 圆角 + `.no-scrollbar` 工具类 ~15min
+- [x] T-003: 新增 `tailwind.config.ts`，逐字移植 screen 内联 `theme.extend` 的 19 个 colors 与 borderRadius 全 0 ~30min
+- [x] T-004: 移植 `fontFamily`/`fontSize`（含 lineHeight/fontWeight/letterSpacing 元组）/`spacing` 三组令牌 ~15min
+- [x] T-005: 新增 `src/app/styles.css`：Tailwind 三指令 + 全局 0 圆角 + `.no-scrollbar` 工具类 ~15min
 
 ### 功能 3: 应用骨架
 
-- [ ] T-006: 新增 `main.tsx`、`App.tsx`（§4.0 根骨架 + 三栏空壳占位）与 `client-context.tsx`（client.ts 单例注入 + 支持 mock 替换） ~30min
+- [x] T-006: 新增 `main.tsx`、`App.tsx`（§4.0 根骨架 + 三栏空壳占位）与 `client-context.tsx`（client.ts 单例注入 + 支持 mock 替换） ~30min
 
 ## 依赖关系
 

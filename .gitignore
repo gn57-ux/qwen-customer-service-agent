@@ -7,6 +7,8 @@ __pycache__/
 # Node 和 Mastra
 node_modules/
 .mastra/
+dist/
+.vite/
 
 # 密钥
 .env
@@ -42,3 +44,4 @@ mastra-agent/.runtime/
 # 本地 Reranker 模型权重（Apache-2.0，可自行下载，不入库）
 mastra-agent/.models/
 .models/
+codex-review/

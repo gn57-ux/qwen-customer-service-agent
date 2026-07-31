@@ -6,14 +6,30 @@
   "private": true,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "smoke": "node --import tsx scripts/smoke.ts"
+    "smoke": "node --import tsx scripts/smoke.ts",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@mastra/client-js": "1.33.0"
+    "@mastra/client-js": "1.33.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^26.1.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "autoprefixer": "^10.5.4",
+    "jsdom": "^30.0.1",
+    "postcss": "^8.5.25",
+    "tailwindcss": "^3.4.19",
     "tsx": "^4.23.1",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vite": "^8.2.0",
+    "vitest": "^4.1.10"
   }
 }

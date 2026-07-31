@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 逐字来自 screen HTML 的 <style>（frontend-workbench/docs/assets/workbench-stitch.html）。
+   全局 0 圆角：组件层不要写 rounded-full 等 rounded-* 类再指望被这里覆写，
+   直接写成 0 圆角方块更清楚（见需求文档 §3.3）。 */
+* {
+  border-radius: 0px !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
