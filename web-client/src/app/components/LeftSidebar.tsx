@@ -25,7 +25,9 @@ export function LeftSidebar({ sessions, activeId, onSelect, onNewSession }: Left
                      flex items-center justify-center gap-2 hover:bg-brand-primary-hover
                      transition-colors mb-6"
         >
-          <span className="material-symbols-outlined">add</span>
+          <span className="material-symbols-outlined" aria-hidden="true">
+            add
+          </span>
           新建会话
         </button>
 

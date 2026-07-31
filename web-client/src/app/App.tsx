@@ -1,20 +1,39 @@
 /**
- * 根骨架（需求文档 §4.0）：Header + LeftSidebar 已在 feature 4 落地；
- * MainChat（feature 5）与 RightPanel（feature 6）仍是占位，后续直接替换即可。
+ * 根骨架（需求文档 §4.0）：Header + LeftSidebar（feature 4）、MainChat（feature 5）
+ * 已落地；RightPanel（feature 6）仍是占位，后续直接替换即可。
  */
 import { useCallback, useState } from "react";
 
 import { ClientProvider } from "./client-context.tsx";
 import { Header } from "./components/Header.tsx";
 import { LeftSidebar } from "./components/LeftSidebar.tsx";
+import { MainChat } from "./components/MainChat.tsx";
+import type { Message } from "./chat-types.ts";
+import { useChatStream } from "./hooks/use-chat-stream.ts";
 import { useServiceStatus } from "./hooks/use-service-status.ts";
-import { createSession, type Session } from "./session.ts";
+import { createSession, titleFromContent, DEFAULT_TITLE, type Session } from "./session.ts";
 import type { CustomerServiceClient } from "../client.ts";
 
 function Workbench() {
   const { data: status, refresh: refreshStatus } = useServiceStatus();
-  const [sessions, setSessions] = useState<Session[]>(() => [createSession("新会话")]);
+  const [sessions, setSessions] = useState<Session[]>(() => [createSession()]);
   const [activeId, setActiveId] = useState(() => sessions[0].id);
+
+  // 按 sessionId 定向写回——与"当前展示哪个会话"解耦，见 use-chat-stream.ts 顶部注释。
+  const setSessionMessages = useCallback((sessionId: string, updater: (prev: Message[]) => Message[]) => {
+    setSessions((prev) =>
+      prev.map((session) => (session.id === sessionId ? { ...session, messages: updater(session.messages) } : session)),
+    );
+  }, []);
+
+  const activeSession = sessions.find((session) => session.id === activeId) ?? sessions[0]!;
+
+  const chat = useChatStream({
+    sessionId: activeSession.id,
+    messages: activeSession.messages,
+    onMessagesChange: setSessionMessages,
+    onSettled: refreshStatus,
+  });
 
   const handleNewSession = useCallback(() => {
     const session = createSession();
@@ -22,12 +41,28 @@ function Workbench() {
     setActiveId(session.id);
   }, []);
 
-  // F-009：清空的是当前会话的消息，不是整个会话列表（design.md 模块 5）。
+  // F-009：清空当前会话的消息，不影响其他会话（design.md 模块 5）。若当前会话
+  // 正在流式生成，先取消请求再清空——否则请求继续跑、composer 也会一直锁在
+  // 发送中，直到那个已经没有消息可写的 turn 自然结束才解锁（Codex Review P2）。
   const handleClearSession = useCallback(() => {
-    setSessions((prev) =>
-      prev.map((session) => (session.id === activeId ? { ...session, messages: [] } : session)),
-    );
-  }, [activeId]);
+    chat.cancel();
+    setSessionMessages(activeSession.id, () => []);
+  }, [activeSession.id, chat, setSessionMessages]);
+
+  const handleSend = useCallback(
+    (content: string) => {
+      // 首条消息落地前用它派生会话标题（需求：左栏标题取首条用户消息截断文本）。
+      if (activeSession.messages.length === 0 && activeSession.title === DEFAULT_TITLE) {
+        setSessions((prev) =>
+          prev.map((session) =>
+            session.id === activeSession.id ? { ...session, title: titleFromContent(content) } : session,
+          ),
+        );
+      }
+      void chat.sendMessage(content);
+    },
+    [activeSession.id, activeSession.messages.length, activeSession.title, chat],
+  );
 
   return (
     <div className="bg-page-bg font-body-md text-text-primary antialiased h-screen flex flex-col overflow-hidden">
@@ -35,12 +70,20 @@ function Workbench() {
       <div className="flex-1 mt-16 flex overflow-hidden w-full max-w-[1920px] mx-auto">
         <LeftSidebar
           sessions={sessions}
-          activeId={activeId}
+          activeId={activeSession.id}
           onSelect={setActiveId}
           onNewSession={handleNewSession}
         />
-        {/* TODO(feature 5): <MainChat /> */}
-        <main className="flex-1 min-w-0" />
+        <MainChat
+          messages={activeSession.messages}
+          isStreaming={chat.isStreaming}
+          onSend={handleSend}
+          onStop={chat.cancel}
+          onCopy={(text) => {
+            void navigator.clipboard?.writeText(text).catch(() => {});
+          }}
+          onRegenerate={() => void chat.regenerate()}
+        />
         {/* TODO(feature 6): <RightPanel /> */}
         <aside className="hidden min-[1100px]:flex w-[300px] xl:w-[320px] flex-shrink-0" />
       </div>
