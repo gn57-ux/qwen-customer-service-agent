@@ -55,3 +55,15 @@
 **技术要点（可复用）**：
 - 并发防覆盖的最小实现：`useRef` 计数器，`refresh()` 入口 `const requestId = ++idRef.current`，每个 `setState` 前判断 `requestId === idRef.current` 才生效；无需引入 `AbortController` 或额外依赖。
 - React Testing Library 的 `render()` 返回的 `getByText`/`getByRole` 默认查询整个 `document.body`，不局限于自己的 `container`——同一个 `it()` 里渲染两次而不 `unmount()`/`cleanup()` 会导致重复元素报错；测试文件必须在 `afterEach` 里调用 `cleanup()`（或手动 `unmount()`），本项目此前的 App.test.tsx 用 `document.body.innerHTML = ""` 也能work，但更推荐官方 `cleanup()`。
+
+## 2026-07-31 — Feature 5: chat-stream-conversation
+
+**Stop hook CR 四轮才过，前两轮是我自己设计上偷懒留下的坑（没有先读透 design.md 的数据模型就动手），后两轮是同一类"同步 vs 异步收尾"问题的连续两次追加：**
+
+1. **`Session.messages` 字段不能因为"当前 feature 用不上"就删掉。** Feature 4 阶段我在 `session.ts` 里给 `Session` 加了 `messages: Message[]`，design.md 明确写了"切换会话"应该保留各自历史、标题取首条消息截断。到 Feature 5 我图省事，把 `messages` 字段整个删掉、用一个全局 `useChatStream()` 内部状态 + 切换会话时 `reset()`，理由是"反正还没有持久化"——这混淆了"暂不持久化到磁盘"和"内存里也不用分会话存"，Codex 一次性挑出两个关联问题（切换会话丢消息、标题不跟着首条消息更新）。**教训**：改数据模型前，先确认这个字段是不是权威文档（design.md/requirements.md）已经明确定义了语义，不能因为当前 task 描述里没提就删——没提可能只是因为那个字段的读端在下一个 feature 才落地，删掉等于抢先违反了尚未轮到但已经写好的设计。
+2. **"受控 hook + 定向写入"模式**：把 `useChatStream()` 从"自己持有 messages state"改成接收 `{sessionId, messages, onMessagesChange}`，写回时永远带上"这个 turn 发起时绑定的 sessionId"（在调用的那一刻用局部变量固定住，不要读取会变化的外部状态)，而不是"当前显示的是哪个会话"。这样切换会话不会让后续的流式事件写错地方，也不会因为组件重渲染导致的闭包更新而串会话。**可复用**：任何"多个独立实体（会话/标签页/文档）共享同一个异步操作 hook"的场景都适用这个模式。
+3. **同步中断 vs 异步 catch 收尾，两者必须做同一件事，缺哪个都会露馅。** 第一次把"切换会话中断在途请求"实现成只 `abort()` + 等异步 `catch` 里比较 `token` 来补写 `aborted`——但如果用户切走会话后立刻又发了一条新消息，`token` 已经被新一轮占用，异步 `catch` 进来一看 token 不对直接 `return`，`aborted` 永远补不上，消息卡死在 `streaming`（CR 第 3 轮）。改成一个同步的 `abortActiveTurn()`，在切换/取消/清空这三个入口统一调用，立刻把状态收尾干净，不依赖后到的 promise reject。**但改完之后又漏了一件事**：这个同步收尾路径绕过了原来 `finally` 里的 `onSettled?.()` 调用（那里因为 token 已经不是最新，直接跳过了），导致"取消/切会话"这两种路径顶栏服务状态不再刷新（CR 第 4 轮）。**教训**：一旦把"正常收尾"拆出一条"同步强制收尾"的旁路，要逐项核对原来 `finally`/`catch` 里做的所有事（状态归位、副作用回调、资源释放），同步旁路必须补齐全部，不能只搬一半。
+
+**技术要点（可复用）**：
+- 并发防护除了 [[stale-concurrent-refresh-must-guard-by-request-id]] 的"自增 token 比较"外，还需要一个"当前在途操作绑定哪个实体"的 ref（这里是 `activeTurnRef: {sessionId, assistantId}`），否则同步中断时"该往哪条消息写 aborted"这件事无从得知——单纯的 token 递增只能拒绝旧数据，不能告诉你旧数据原本要去哪。
+- 测试 jsdom 里没有真实布局，`scrollHeight`/`clientHeight`/`scrollTop` 全部是 0/可写但不联动；要测滚动策略必须用 `Object.defineProperty` 手动打桩这三个属性（`scrollTop` 要给 get/set 都接上同一个闭包变量），再用 `fireEvent.scroll()` 触发组件自己的 `onScroll` 处理器。

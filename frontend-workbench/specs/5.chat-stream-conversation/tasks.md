@@ -16,19 +16,19 @@
 
 ### 功能 1: 流式状态层
 
-- [ ] T-001: 新建 `hooks/use-chat-stream.ts`：`AssistantTurn` 状态机，`text`（流式累积）与 `body`（结构化真源）分开存储 ~30min
-- [ ] T-002: 接入 `streamChat()` 五类事件分发（meta/tool-result/text-delta/done/error），done 后以 `body` 为真源 ~30min
-- [ ] T-003: 收尾归一：`AbortError`→`aborted`（不报错、保留内容）、`error` 与「提前结束」→`error`，finally 触发 `4.T-002` 的 `refresh()` ~30min
-- [ ] T-004: 取消实现：`AbortController` + 停止按钮乐观置灰（应对请求头返回前无法原生取消的库限制） ~15min
+- [x] T-001: 新建 `hooks/use-chat-stream.ts`：`AssistantTurn` 状态机，`text`（流式累积）与 `body`（结构化真源）分开存储 ~30min
+- [x] T-002: 接入 `streamChat()` 五类事件分发（meta/tool-result/text-delta/done/error），done 后以 `body` 为真源 ~30min
+- [x] T-003: 收尾归一：`AbortError`→`aborted`（不报错、保留内容）、`error` 与「提前结束」→`error`，finally 触发 `4.T-002` 的 `refresh()` ~30min
+- [x] T-004: 取消实现：`AbortController` + 停止按钮乐观置灰（应对请求头返回前无法原生取消的库限制） ~15min
 
 ### 功能 2: 对话区 UI
 
-- [ ] T-005: `<ChatHeader />`（标题/副标题/三枚能力徽章）+ `<MessageList />`（滚动容器、`pb-40` 避让、贴近底部才跟随的滚动策略） ~30min
-- [ ] T-006: `<UserBubble />` 与 `<AssistantMessage />`（身份行 + 正文 pre-wrap 换行 + 操作行四按钮），并预留安全卡/引用/订单卡插槽 ~30min
+- [x] T-005: `<ChatHeader />`（标题/副标题/三枚能力徽章）+ `<MessageList />`（滚动容器、`pb-40` 避让、贴近底部才跟随的滚动策略） ~30min
+- [x] T-006: `<UserBubble />` 与 `<AssistantMessage />`（身份行 + 正文 pre-wrap 换行 + 操作行四按钮），并预留安全卡/引用/订单卡插槽 ~30min
 
 ### 功能 3: 输入区
 
-- [ ] T-007: `<Composer />`：4 个快捷 chip（点击仅填入不发送、横向滚动隐藏滚动条）+ textarea + 发送/停止按钮 + 免责声明 ~30min
+- [x] T-007: `<Composer />`：4 个快捷 chip（点击仅填入不发送、横向滚动隐藏滚动条）+ textarea + 发送/停止按钮 + 免责声明 ~30min
 
 ## 依赖关系
 

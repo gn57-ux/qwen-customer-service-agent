@@ -10,3 +10,5 @@
 - [注释里写"禁止的字面量"要用转述，避免被门禁正则误判为违规](comments-avoid-gate-regex-literals.md) — Feature 8 门禁扫描不分注释与代码，写规则说明要用转述 | tags: documentation,comments,gate,regex,false-positive,quality-gates
 - [并发 refresh 需用自增 request id 防止旧请求覆盖新状态](stale-concurrent-refresh-must-guard-by-request-id.md) — effect+轮询+用户交互多处触发同一刷新函数时的竞态防护模式 | tags: react-hook,concurrency,race-condition,polling,refresh
 - [Stitch 设计稿的图标按钮/可点击列表项要补键盘与屏幕阅读器语义](icon-only-controls-need-real-buttons-and-aria-label.md) — li-onclick 改真实 button + aria-current；图标按钮补 aria-label + 图标 aria-hidden | tags: accessibility,a11y,aria-label,aria-hidden,keyboard,button
+- [受控 hook + 定向写入——多实体共享同一异步操作 hook 的正确模式](controlled-hook-with-targeted-write-for-multi-entity-state.md) — 多会话/多标签页共享同一个流式请求 hook 时，数据下放给调用方持有，写回按 entityId 定向 | tags: react-hook,multi-session,controlled-component,race-condition
+- [同步中断路径必须搬全异步收尾原本做的每一件事](synchronous-teardown-must-mirror-async-cleanup.md) — abort 的同步旁路要跟正常 finally 做一样的收尾（状态归位+onSettled+资源释放），不能只改一半 | tags: react-hook,abort-controller,race-condition,cleanup,onSettled
