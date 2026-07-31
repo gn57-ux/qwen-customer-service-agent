@@ -14,7 +14,7 @@
 
 | 序号 | feature | 说明 | 依赖 | 状态 |
 | ---- | ------- | ---- | ---- | ---- |
-| 1 | `contract-retrieval-counts` | 契约新增 `retrievedCount`/`returnedCount` + 类型化 `OrderStatus.details` 白名单，经 `buildContractExtras()` 带出至 route 层两处组装点 | - | 待开发 (v2) |
+| 1 | `contract-retrieval-counts` | 契约新增 `retrievedCount`/`returnedCount` + 类型化 `OrderStatus.details` 白名单，经 `buildContractExtras()` 带出至 route 层两处组装点 | - | ✅ 已完成（commit `7a1dd20`） |
 | 2 | `service-status-endpoint` | 新增 `GET /customer-service/status` 与 `client.status()`，三项服务四态聚合探测 | 1 | 待开发 |
 | 3 | `workbench-app-scaffold` | web-client 内部搭建 Vite+React+TS+Tailwind，移植 screen 内联设计令牌 | - | 待开发 |
 | 4 | `workbench-shell-layout` | 三栏骨架 + 顶栏服务状态 + 左侧会话列表 | 2, 3 | 待开发 |
