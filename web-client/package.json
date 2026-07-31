@@ -9,7 +9,11 @@
     "smoke": "node --import tsx scripts/smoke.ts",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "gate:no-direct": "bash scripts/gate-no-direct.sh",
+    "gate:no-hardcoded-count": "bash scripts/gate-no-hardcoded-count.sh",
+    "gate:assets": "bash scripts/gate-assets.sh",
+    "gates": "npm run typecheck && npm run build && npm run test && npm run gate:no-direct && npm run gate:no-hardcoded-count && npm run gate:assets"
   },
   "dependencies": {
     "@mastra/client-js": "1.33.0",

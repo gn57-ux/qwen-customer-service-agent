@@ -1,0 +1,2 @@
+05bfeae50c4d1d684aae553f0aa467ab09c7bf75c3e936713dd067b94e5370da  workbench-screenshot.jpg
+e8182fbfcbce6d080801f708c47162c970a5fb478c6243f7ea8f90fd3389939b  workbench-stitch.html

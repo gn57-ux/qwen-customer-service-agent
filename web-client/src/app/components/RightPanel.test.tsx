@@ -68,8 +68,12 @@ describe("RightPanel", () => {
       body: doneBody({
         route: "safety",
         toolCalls: [{ name: "searchKnowledgeBase", arguments: {}, result: {} }],
-        retrievedCount: 20,
-        returnedCount: 5,
+        // 故意用非 20/5 的构造值——门禁 6（gate-no-hardcoded-count.sh）按文案
+        // 正则扫描召回/重排计数，若测试也写 20/5 会把真实来源于字段的正确实现
+        // 跟"凑巧写死 20/5"混为一谈，不足以证明数值确实来自 retrievedCount/
+        // returnedCount 字段而非硬编码（design.md 模块 2 的補偿手段）。
+        retrievedCount: 17,
+        returnedCount: 3,
         reranked: true,
         traceId: "TRACE-A84F21",
         latencyMs: 2800,
@@ -88,8 +92,8 @@ describe("RightPanel", () => {
     const { getByText } = render(<RightPanel turn={turn} />);
 
     expect(getByText("已识别 · 安全咨询")).toBeTruthy();
-    expect(getByText("已召回 · 20 个候选片段")).toBeTruthy();
-    expect(getByText("重排完成 · Top 5")).toBeTruthy();
+    expect(getByText("已召回 · 17 个候选片段")).toBeTruthy();
+    expect(getByText("重排完成 · Top 3")).toBeTruthy();
     expect(getByText("已触发 · 安全策略")).toBeTruthy();
     expect(getByText("回答模式")).toBeTruthy();
     expect(getByText("安全策略介入")).toBeTruthy();
