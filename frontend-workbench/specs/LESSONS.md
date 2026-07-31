@@ -79,3 +79,17 @@
 **技术要点（可复用）**：
 - 唯一 top-1 选择：`let topIndex = -1, maxScore = -Infinity; items.forEach((item, i) => { if (item.score > maxScore) { maxScore = item.score; topIndex = i; } })`，比较用 `>` 不用 `>=`，第一个达到最大值的下标自然胜出，是天然的确定性 tie-break。
 - 双组件共享的 DOM id/锚点生成规则要抽成一个独立的纯函数（本例 `citation.ts` 的 `citationElementId()`），由生产者（`AssistantMessage` 渲染锚点）和消费者（`SourceList` 滚动定位）共同导入，禁止两边各写一份字符串模板——那样任何一边改了格式就会静默失联。
+
+## 2026-07-31 — Feature 7: scenarios-and-degradation
+
+**Stop hook CR 七轮才过——是目前为止轮次最多的 feature，因为 Drawer 组件牵扯到"响应式 + 动画 + 焦点管理"三件事互相耦合，改一处经常暴露另一处的坑：**
+
+1. **订单卡三条件缺一不可**：`resolveSlots()` 的 `orderCard` 判定第一版只写了"有 queryOrderTool 调用 + 有 order 字段"两条件，漏了 `route === "order"` 本身——导致安全/维修场景如果恰好带着 `order` 字段（理论上契约允许，服务端不应该这么做但类型层面没禁止），会被误判成订单场景渲染出不相关的订单卡。**教训**：design.md 文字描述"双条件"时,要以需求文档 F-001 的完整表述为准("订单类(route==="order")...")，不能只抄设计文档里为了强调"不能只判 route"而省略了 route 本身的示例代码。
+2. **契约允许但没写进状态表的组合，也要防御。** `deriveOrderView()` 只处理了 `error` 存在、`partial` 为 true、以及"正常成功"三支，遗漏了 `found:false` 且没有 `error` 这个类型层面合法的边界（需求 6 种状态表没有单独列这一行，但 `OrderStatus.error` 是可选字段，类型系统不禁止这个组合）。**教训**：写状态机时,以 TypeScript 类型的笛卡尔积为基准去核对分支覆盖，而不是只对照文档列出的"有名字的状态"——文档罗列的是产品语义上重要的状态，类型允许的组合可能比文档列出的更多，落在文档外的组合不能默认落到 happy path。
+3. **React 组件的"关闭动画"必须在 render 阶段同步派生状态，不能放进 useEffect。** 抽屉退场需要"prop 变 false 那一刻仍然渲染一帧，之后才卸载"；如果用 `useEffect(() => { if (!open) setIsClosing(true) }, [open])`，effect 要等 commit 之后才跑，比 prop 变化晚一整个 render，会导致组件在"应该开始播放退场动画"的这一帧直接被判定为"不该渲染"而卸载，动画完全不会发生。正确做法是 React 官方认可的"根据 prop 变化调整 state"模式：在函数体顶部用 `if (prevPropRef.current !== prop) { prevPropRef.current = prop; setState(...) }` 同步比较并更新，React 会在同一次渲染流程内用新 state 重新渲染，不产生用户可见的中间帧。**入场动画同理但方向相反**：入场需要"先出现在收起位置，下一拍才翻到展开位置"，这次反而不能在同一个 render 里完成（那样只有一次样式重算，没有"从收起到展开"的过渡可言），要用一个真实的异步 tick（`setTimeout(fn, 0)` 足够，不需要 `requestAnimationFrame`）。**同一个组件里，关闭要同步、打开要异步，取决于"这一帧该不该被浏览器看见"，不是无脑套用同一种手法。**
+4. **CSS 响应式隐藏（`hidden`/断点类）不能替代真正的状态收口。** Drawer 在窄屏打开后，如果视口被拉宽越过桌面断点，`min-[1100px]:hidden` 只是视觉上把它藏起来，`open` 状态和文档级的 Tab 焦点陷阱监听依然认为它是"打开的"，导致键盘用户被困在一个自己完全看不见的面板里，看得见的桌面栏位反而键盘不可达。**教训**：任何"用 CSS 断点类做响应式显隐"的交互式组件（尤其带焦点管理/模态语义的），都要额外用 `matchMedia` 监听同一断点，越界时主动调用状态收口的回调（这里是 `onClose()`），不能假设"视觉隐藏"和"交互状态"会自动保持一致——CSS 从不知道 JS 状态的存在。
+
+**技术要点（可复用）**：
+- "根据 prop 变化调整 state，在 render 阶段同步比较 ref 而不是在 effect 里"——这是 React 官方文档明确背书的模式（"Adjusting state when a prop changes"），本质是让状态转换与触发它的 prop 变化处于同一个渲染周期，避免多等一轮 effect 调度带来的时序错位。任何"某个 prop 翻转的瞬间必须立刻反映到另一个 state，且不能有额外一帧的错误中间态"的场景都适用（本例是 isClosing/entered 双状态：关闭同步翻、打开异步翻）。
+- `window.matchMedia(query)` 在 jsdom 里没有实现（`typeof window.matchMedia !== "function"`），用到的组件必须加运行时守卫；测试要手动打桩一个假 `MediaQueryList`（带 `matches` getter + `addEventListener`/`removeEventListener`），通过桩对象的 `triggerChange()` 模拟断点变化，不依赖真实浏览器环境。
+- 焦点陷阱（Tab/Shift+Tab 循环）的最小实现：监听 keydown，命中 Tab 时用 `panel.querySelectorAll(FOCUSABLE_SELECTOR)` 取可聚焦元素列表，`shiftKey && activeElement===first` → 跳到 last；`!shiftKey && activeElement===last` → 跳到 first；`activeElement` 完全不在面板内（异常路径）→ 拉回 first。不需要第三方库。

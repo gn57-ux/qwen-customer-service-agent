@@ -17,22 +17,22 @@
 
 ### 功能 1: 场景分发与订单卡
 
-- [ ] T-001: 新建 `scenarios/render-slots.ts`：按结构化字段决定安全卡/订单卡/引用角标三个插槽；订单卡采用「有 queryOrderTool 调用 + 有 order」双条件 ~15min
-- [ ] T-002: 实现订单卡片 6 种状态（成功/部分缺失/不存在/超时/服务错误/网络错误），仅 timeout 与 network_error 带重试；详情区**只读 `order.details`** 的 10 个白名单字段，逐字段空值隐藏（`canCancel` 为 null 不得当作 false），`details` 为 undefined 时不渲染详情区 ~30min `[CHANGED v2: 改读类型化 order.details；禁止解析泛型 toolCalls[].result]`
+- [x] T-001: 新建 `scenarios/render-slots.ts`：按结构化字段决定安全卡/订单卡/引用角标三个插槽；订单卡采用「有 queryOrderTool 调用 + 有 order」双条件 ~15min
+- [x] T-002: 实现订单卡片 6 种状态（成功/部分缺失/不存在/超时/服务错误/网络错误），仅 timeout 与 network_error 带重试；详情区**只读 `order.details`** 的 10 个白名单字段，逐字段空值隐藏（`canCancel` 为 null 不得当作 false），`details` 为 undefined 时不渲染详情区 ~30min `[CHANGED v2: 改读类型化 order.details；禁止解析泛型 toolCalls[].result]`
 
 ### 功能 2: 场景差异与引用角标
 
-- [ ] T-003: 安全卡组件（safety 三件套 + `warning` 图标，话术取自服务端正文）+ 引用角标（`description`/`security` 图标按 route 与 rank 选择） ~30min
-- [ ] T-004: 四类 route 差异化验证：repair 空 sources 不渲染角标、general 最小集合、safety 必现安全卡、order 追问场景不渲染卡片 ~30min
+- [x] T-003: 安全卡组件（safety 三件套 + `warning` 图标，话术取自服务端正文）+ 引用角标（`description`/`security` 图标按 route 与 rank 选择） ~30min
+- [x] T-004: 四类 route 差异化验证：repair 空 sources 不渲染角标、general 最小集合、safety 必现安全卡、order 追问场景不渲染卡片 ~30min
 
 ### 功能 3: 异常态
 
-- [ ] T-005: error 卡（追加而非替换正文，含 message/traceId/重试）+ 右栏「已中断 · 生成失败」节点 + degraded 不阻断正文 + 取消无提示，三种收尾 UI 明确区分 ~30min
+- [x] T-005: error 卡（追加而非替换正文，含 message/traceId/重试）+ 右栏「已中断 · 生成失败」节点 + degraded 不阻断正文 + 取消无提示，三种收尾 UI 明确区分 ~30min
 
 ### 功能 4: 响应式降级
 
-- [ ] T-006: 四个断点行为（md 768 / min-[1100px] / xl 1280）栏位显隐、内边距、对话头部方向、正文字号 ~30min
-- [ ] T-007: `<Drawer />` 组件（0 圆角、200ms ease-out、遮罩 rgba(36,49,66,0.4)、Esc 关闭与焦点管理）+ 右抽屉复用 feature 6 内容组件 + 左抽屉会话列表；验证四断点无横向滚动 ~30min
+- [x] T-006: 四个断点行为（md 768 / min-[1100px] / xl 1280）栏位显隐、内边距、对话头部方向、正文字号 ~30min
+- [x] T-007: `<Drawer />` 组件（0 圆角、200ms ease-out、遮罩 rgba(36,49,66,0.4)、Esc 关闭与焦点管理）+ 右抽屉复用 feature 6 内容组件 + 左抽屉会话列表；验证四断点无横向滚动 ~30min
 
 ## 依赖关系
 
