@@ -1,15 +1,22 @@
 /**
- * AI 消息（F-004/F-005）。安全提示卡、引用来源、订单卡由 feature 6/7 通过
- * `children` 插槽注入——本组件只负责身份行、正文、操作行、错误态展示。
+ * AI 消息（F-004/F-005）。安全提示卡、订单卡由 feature 7 通过 `children` 插槽
+ * 注入——本组件只负责身份行、正文、引用角标、操作行、错误态展示。
  *
  * ⛔ 正文渲染禁止 dangerouslySetInnerHTML（design.md 安全考虑）：用
  * `whitespace-pre-wrap` 让 `\n` 自然换行，不解析设计稿里的 `<br>`。
+ *
+ * 引用角标（feature 6 F-009 的开放问题resolution）：右栏「引用来源」列表点击
+ * 需要滚动定位到这里渲染的角标，双方共用 `citationElementId(messageId, index)`
+ * 生成同一个 id，不能各写一份格式字符串。
  */
 import type { ReactNode } from "react";
 
 import type { AssistantTurn } from "../chat-types.ts";
+import { citationElementId } from "../citation.ts";
 
 export interface AssistantMessageProps {
+  /** 本消息的稳定 id——用于生成引用角标锚点，供右栏 SourceList 点击滚动定位 */
+  messageId: string;
   turn: AssistantTurn;
   onCopy?: (text: string) => void;
   onRegenerate?: () => void;
@@ -24,11 +31,12 @@ const ACTIONS = [
   { key: "down", icon: "thumb_down", label: "没有帮助" },
 ] as const;
 
-export function AssistantMessage({ turn, onCopy, onRegenerate, onFeedback, children }: AssistantMessageProps) {
+export function AssistantMessage({ messageId, turn, onCopy, onRegenerate, onFeedback, children }: AssistantMessageProps) {
   // done 后以结构化 body.reply 为真源；未 done（含 streaming/error/aborted）展示流式累积的 text，
   // 保证取消/错误后已生成内容不丢失（AC-003/AC-004）。
   const text = turn.phase === "done" ? (turn.body?.reply ?? turn.text) : turn.text;
   const settled = turn.phase === "done" || turn.phase === "error" || turn.phase === "aborted";
+  const sources = turn.phase === "done" ? turn.body?.sources : undefined;
 
   const handleAction = (key: (typeof ACTIONS)[number]["key"]) => {
     if (key === "copy") onCopy?.(text);
@@ -53,6 +61,23 @@ export function AssistantMessage({ turn, onCopy, onRegenerate, onFeedback, child
           <p className="text-safety-text text-[13px]">
             {turn.errorMessage ?? "回答生成失败，请重试。"}
           </p>
+        )}
+
+        {sources && sources.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-4">
+            {sources.map((source, index) => (
+              <span
+                key={citationElementId(messageId, index)}
+                id={citationElementId(messageId, index)}
+                className="bg-citation-bg text-citation-text text-[12px] px-3 py-1.5 flex items-center gap-1 scroll-mt-20"
+              >
+                <span className="material-symbols-outlined text-[14px]" aria-hidden="true">
+                  description
+                </span>
+                [{index + 1}] {source.title} · {source.section}
+              </span>
+            ))}
+          </div>
         )}
 
         {children}

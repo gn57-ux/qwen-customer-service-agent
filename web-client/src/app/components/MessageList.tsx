@@ -58,6 +58,7 @@ export function MessageList({ messages, onCopy, onRegenerate, onFeedback }: Mess
         ) : (
           <AssistantMessage
             key={message.id}
+            messageId={message.id}
             turn={message.turn}
             onCopy={onCopy}
             onRegenerate={index === lastAssistantIndex ? onRegenerate : undefined}

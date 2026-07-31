@@ -1,6 +1,6 @@
 /**
- * 根骨架（需求文档 §4.0）：Header + LeftSidebar（feature 4）、MainChat（feature 5）
- * 已落地；RightPanel（feature 6）仍是占位，后续直接替换即可。
+ * 根骨架（需求文档 §4.0）：Header + LeftSidebar（feature 4）、MainChat（feature 5）、
+ * RightPanel（feature 6）均已落地。
  */
 import { useCallback, useState } from "react";
 
@@ -8,6 +8,7 @@ import { ClientProvider } from "./client-context.tsx";
 import { Header } from "./components/Header.tsx";
 import { LeftSidebar } from "./components/LeftSidebar.tsx";
 import { MainChat } from "./components/MainChat.tsx";
+import { RightPanel } from "./components/RightPanel.tsx";
 import type { Message } from "./chat-types.ts";
 import { useChatStream } from "./hooks/use-chat-stream.ts";
 import { useServiceStatus } from "./hooks/use-service-status.ts";
@@ -27,6 +28,8 @@ function Workbench() {
   }, []);
 
   const activeSession = sessions.find((session) => session.id === activeId) ?? sessions[0]!;
+  const lastMessage = activeSession.messages.at(-1);
+  const lastAssistantTurn = lastMessage?.role === "assistant" ? lastMessage.turn : undefined;
 
   const chat = useChatStream({
     sessionId: activeSession.id,
@@ -84,8 +87,7 @@ function Workbench() {
           }}
           onRegenerate={() => void chat.regenerate()}
         />
-        {/* TODO(feature 6): <RightPanel /> */}
-        <aside className="hidden min-[1100px]:flex w-[300px] xl:w-[320px] flex-shrink-0" />
+        <RightPanel turn={lastAssistantTurn} messageId={lastAssistantTurn ? lastMessage?.id : undefined} />
       </div>
     </div>
   );

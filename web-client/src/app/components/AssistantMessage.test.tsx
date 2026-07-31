@@ -15,7 +15,7 @@ function turnOf(overrides: Partial<AssistantTurn>): AssistantTurn {
 describe("AssistantMessage", () => {
   it("streaming 阶段展示累积的 text，不展示操作行", () => {
     const { getByText, queryByRole } = render(
-      <AssistantMessage turn={turnOf({ phase: "streaming", text: "生成中的部分内容" })} />,
+      <AssistantMessage messageId="m1" turn={turnOf({ phase: "streaming", text: "生成中的部分内容" })} />,
     );
     expect(getByText("生成中的部分内容")).toBeTruthy();
     expect(queryByRole("button", { name: "复制" })).toBeNull();
@@ -35,7 +35,7 @@ describe("AssistantMessage", () => {
         latencyMs: 1,
       },
     });
-    const { getByText, getByRole } = render(<AssistantMessage turn={turn} onRegenerate={() => {}} />);
+    const { getByText, getByRole } = render(<AssistantMessage messageId="m1" turn={turn} onRegenerate={() => {}} />);
     expect(getByText("结构化最终回复")).toBeTruthy();
     expect(getByRole("button", { name: "复制" })).toBeTruthy();
     expect(getByRole("button", { name: "重新生成" })).toBeTruthy();
@@ -43,7 +43,7 @@ describe("AssistantMessage", () => {
 
   it("error 阶段保留部分正文并展示错误提示（AC-004）", () => {
     const { getByText } = render(
-      <AssistantMessage turn={turnOf({ phase: "error", text: "已生成的部分", errorMessage: "网络错误" })} />,
+      <AssistantMessage messageId="m1" turn={turnOf({ phase: "error", text: "已生成的部分", errorMessage: "网络错误" })} />,
     );
     expect(getByText("已生成的部分")).toBeTruthy();
     expect(getByText("网络错误")).toBeTruthy();
@@ -51,7 +51,7 @@ describe("AssistantMessage", () => {
 
   it("aborted 阶段不展示错误提示，保留已生成内容（AC-003）", () => {
     const { getByText, queryByText } = render(
-      <AssistantMessage turn={turnOf({ phase: "aborted", text: "已生成的部分" })} />,
+      <AssistantMessage messageId="m1" turn={turnOf({ phase: "aborted", text: "已生成的部分" })} />,
     );
     expect(getByText("已生成的部分")).toBeTruthy();
     expect(queryByText(/错误|失败/)).toBeNull();
@@ -62,6 +62,7 @@ describe("AssistantMessage", () => {
     const onRegenerate = vi.fn();
     const { getByRole } = render(
       <AssistantMessage
+        messageId="m1"
         turn={turnOf({ phase: "done", text: "内容" })}
         onCopy={onCopy}
         onRegenerate={onRegenerate}
@@ -71,5 +72,41 @@ describe("AssistantMessage", () => {
     expect(onCopy).toHaveBeenCalledWith("内容");
     fireEvent.click(getByRole("button", { name: "重新生成" }));
     expect(onRegenerate).toHaveBeenCalledOnce();
+  });
+
+  it("done 且有 sources 时渲染引用角标，id 与 citationElementId() 一致（Codex Review P2：供右栏点击滚动定位）", () => {
+    const turn = turnOf({
+      phase: "done",
+      text: "",
+      body: {
+        reply: "结构化最终回复",
+        route: "general",
+        toolCalls: [],
+        retrievedCount: 1,
+        returnedCount: 1,
+        traceId: "t1",
+        latencyMs: 1,
+        sources: [
+          {
+            title: "冰箱常见故障排查",
+            section: "不制冷",
+            sourceFile: "DOC-8821",
+            documentVersion: "v3",
+            vectorScore: 0.9,
+            rerankScore: null,
+          },
+        ],
+      },
+    });
+    const { container, getByText } = render(<AssistantMessage messageId="msg-42" turn={turn} />);
+    expect(getByText(/冰箱常见故障排查/)).toBeTruthy();
+    expect(container.querySelector("#citation-msg-42-0")).toBeTruthy();
+  });
+
+  it("没有 sources（或未 done）时不渲染引用角标区域", () => {
+    const { container } = render(
+      <AssistantMessage messageId="m1" turn={turnOf({ phase: "streaming", text: "生成中" })} />,
+    );
+    expect(container.querySelector('[id^="citation-"]')).toBeNull();
   });
 });
