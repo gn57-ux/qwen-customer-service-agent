@@ -14,5 +14,6 @@
 - [同步中断路径必须搬全异步收尾原本做的每一件事](synchronous-teardown-must-mirror-async-cleanup.md) — abort 的同步旁路要跟正常 finally 做一样的收尾（状态归位+onSettled+资源释放），不能只改一半 | tags: react-hook,abort-controller,race-condition,cleanup,onSettled
 - [组件动画/生命周期状态要在 render 阶段同步派生，不能放进 useEffect](render-phase-state-adjustment-for-sync-transitions.md) — Drawer 退场动画：同步派生 vs 异步 tick 的取舍 | tags: react,useEffect,render-phase,animation,drawer
 - [CSS 断点隐藏不能替代真正的交互状态收口——响应式组件要配 matchMedia](css-responsive-hiding-needs-matchmedia-state-sync.md) — Drawer 跨断点自动关闭，避免焦点陷阱困住隐藏面板 | tags: responsive,matchmedia,drawer,focus-trap,accessibility
+- [手写源码级文本解析器容易踩的四层坑](handwritten-source-parser-hardening-checklist.md) — 字段名→类型/可选→引用别名解析→多行切分→箭头函数陷阱，写契约镜像检查前先看这份清单 | tags: parser,ast,contract-testing,type-safety,regex
 - [从集合选唯一最大项要用严格大于维护下标，不能先求 Math.max() 再等值判断](unique-max-selection-needs-strict-greater-than.md) — rank-1/唯一最大值判定的并列 tie-break 正确写法 | tags: derive,rank-1,tie-break,max,deterministic
 - [只画 cursor-pointer/hover 不接点击行为，是误导性 UI](interactive-styling-without-handler-is-misleading.md) — 需求"开放问题"给出的具体 resolution 也是验收范围；交互目标不存在要一并实现 | tags: ui,interaction,open-question,requirements,misleading-affordance
