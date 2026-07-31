@@ -123,3 +123,64 @@ export async function runAgentTurn(
   const step2 = await customerServiceAgent.generate([...messages, ...responseMessages] as any);
   return { reply: step2.text.trim(), toolCalls, route };
 }
+
+export interface StreamAgentTurnHandlers {
+  /** 强制路由的工具在流式合成开始前就已经真实执行完毕，这里立刻通知一次。
+   * 允许返回 Promise（例如 SSE 路由里要 await stream.writeSSE），调用方会等待。 */
+  onToolResult?: (call: ToolCallRecord) => void | Promise<void>;
+  onTextDelta?: (delta: string) => void | Promise<void>;
+}
+
+/**
+ * runAgentTurn 的流式版本：路由/强制工具逻辑完全一致，只是最终合成那一步用
+ * customerServiceAgent.stream() 而不是 .generate()，把文本增量通过
+ * onTextDelta 回调实时吐出去（供 /customer-service/stream 路由转成 SSE）。
+ *
+ * 强制路由（order/repair）时，工具调用发生在流式合成开始之前（两步模式的
+ * 第一步本来就不是流式的），所以 onToolResult 会在任何 onTextDelta 之前
+ * 同步触发；不强制路由（safety/general）时，Mastra 的 stream() 内部循环
+ * 理论上也可能自己决定调用工具，但已实测这两类场景几乎不会主动调用工具，
+ * 这种情况下 onToolResult 会在文本流结束后才触发（读取 getFullOutput()）。
+ */
+export async function streamAgentTurn(
+  userMessage: string,
+  history: Array<{ role: "user" | "assistant"; content: string }> = [],
+  handlers: StreamAgentTurnHandlers = {},
+): Promise<AgentRunResult> {
+  const route = classifyRoute(userMessage);
+  const forcedTool = FORCED_TOOL_BY_ROUTE[route];
+  const messages = [...history, { role: "user" as const, content: userMessage }];
+
+  let toolCalls: ToolCallRecord[] = [];
+  let finalMessages: unknown = messages;
+
+  if (forcedTool) {
+    const step1 = await customerServiceAgent.generate(messages as any, {
+      activeTools: [forcedTool],
+      toolChoice: "required",
+      maxSteps: 1,
+    });
+    toolCalls = collectToolCalls(step1);
+    if (toolCalls.length === 0) {
+      await handlers.onTextDelta?.(step1.text.trim());
+      return { reply: step1.text.trim(), toolCalls: [], route };
+    }
+    for (const call of toolCalls) await handlers.onToolResult?.(call);
+    finalMessages = [...messages, ...(step1.response?.messages ?? [])];
+  }
+
+  const streamResult = await customerServiceAgent.stream(finalMessages as any);
+  let text = "";
+  for await (const delta of streamResult.textStream) {
+    text += delta;
+    await handlers.onTextDelta?.(delta);
+  }
+
+  if (!forcedTool) {
+    const full = await streamResult.getFullOutput();
+    toolCalls = collectToolCalls(full as unknown as GenerateResult);
+    for (const call of toolCalls) await handlers.onToolResult?.(call);
+  }
+
+  return { reply: text.trim(), toolCalls, route };
+}

@@ -1,0 +1,19 @@
+{
+  "name": "customer-service-client",
+  "version": "1.0.0",
+  "description": "React/Vite 前端共享的最小 Mastra 客服客户端：只通过 @mastra/client-js 调用 Mastra 服务的 customer-service/chat、customer-service/stream 两个自定义 route，不直连 FastAPI 或 llama-server，不自行实现路由。",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "smoke": "node --import tsx scripts/smoke.ts"
+  },
+  "dependencies": {
+    "@mastra/client-js": "1.33.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
+  }
+}
