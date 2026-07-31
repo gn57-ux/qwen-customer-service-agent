@@ -1,0 +1,26 @@
+# Mac 本地推理 + 测试依赖。只用于 services/ 的 FastAPI 推理服务，
+# 不含 bitsandbytes（CUDA-only，Mac 上不可用，禁止安装）。
+#
+# 版本优先沿用仓库训练侧已锁定且验证过与 Qwen3 兼容的组合
+# （见 requirements.txt），联合 dry-run 已确认在 Python 3.11 / macOS arm64
+# 下无冲突：torch 2.9.1 + transformers 4.56.2 + accelerate 1.11.0 + peft 0.18.1。
+# 全部依赖（含测试依赖）均为已实际安装并验证过的精确版本，无浮动依赖。
+#
+# 安装：
+#   python3.11 -m venv .venv
+#   .venv/bin/pip install -r requirements-mac.txt
+
+torch==2.9.1
+transformers==4.56.2
+accelerate==1.11.0
+peft==0.18.1
+fastapi==0.139.2
+uvicorn==0.51.0
+pydantic==2.12.3
+safetensors==0.8.0
+huggingface-hub==0.36.2
+
+# 测试（版本为实际安装并验证过的组合，全部锁定）
+pytest==9.1.1
+httpx==0.28.1
+psutil==7.2.2

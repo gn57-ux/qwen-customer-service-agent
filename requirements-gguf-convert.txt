@@ -1,0 +1,15 @@
+# GGUF 转换专用依赖（一次性工具依赖，不是 FastAPI 运行时依赖）。
+# 精确锁定为本机实际安装并验证过转换成功的版本。
+#
+# torch/transformers/safetensors/huggingface-hub 已由 requirements-mac.txt 提供，
+# 这里不重复声明版本，只声明转换脚本额外需要、requirements-mac.txt 没有的依赖。
+#
+# 安装：
+#   .venv/bin/pip install -r requirements-gguf-convert.txt
+#
+# sentencepiece 是 llama.cpp 官方 requirements-convert_legacy_llama.txt 的依赖，
+# 用于让 convert_hf_to_gguf.py 的 Qwen2Model.set_vocab() 在探测 tokenizer.model
+# 不存在时能正确捕获 FileNotFoundError 并回退到 GPT2 BPE 词表（Qwen3 的真实词表
+# 格式）。缺它会在 `from sentencepiece import SentencePieceProcessor` 处直接
+# ModuleNotFoundError 崩溃，而不是优雅回退。不是量化框架，只是词表探测的前置依赖。
+sentencepiece==0.2.2

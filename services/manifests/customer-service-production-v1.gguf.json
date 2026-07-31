@@ -1,0 +1,80 @@
+{
+  "schema": "customer-service-gguf-manifest/v1",
+  "purpose": "受控、可提交的 GGUF 资产身份证据。models/gguf/ 下的副本仅供本机加速核对，不作为唯一证据源——换机器 clone 后必须能从这份文件独立重建/核验身份，不依赖被 .gitignore 忽略的 models/ 目录。",
+  "package_name": "customer-service-production-v1",
+  "recorded_at": "2026-07-31",
+  "conversion_tool": {
+    "source": "https://github.com/ggml-org/llama.cpp",
+    "commit": "11b068d06605288ce7917534b46d52b47823dc13",
+    "commit_matches_installed_binary": true,
+    "installed_llama_cpp_version": "10180 (11b068d06)",
+    "note": "convert_hf_to_gguf.py / convert_lora_to_gguf.py 必须取自与已安装 llama-server/llama-quantize 完全相同 commit 的源码（Homebrew 只装二进制，不带脚本）。脚本本身不入库，运行时放在 models/tools/（已 gitignore）。"
+  },
+  "base_model": {
+    "repo": "Qwen/Qwen3-8B",
+    "revision": "b968826d9c46dd6066d109eabc6255188de91218",
+    "revision_evidence": "hf-local（.cache/huggingface/download/*.metadata，15 个文件一致指向该 commit）"
+  },
+  "adapter_source": {
+    "path": "models/adapters/customer-service-production-v1",
+    "peft_type": "LORA",
+    "best_checkpoint": "/workspace/training-artifacts/qwen3-8b/customer-service-production-v1/checkpoint-160",
+    "best_eval_loss": 1.8314380645751953,
+    "dataset_sha256": {
+      "train": "76464f6b2da0be60d30e796d566e80f7c5fb3597d61020c5c36d49a841e4d5e7",
+      "validation": "d8cbcf9a0cbf303f1340b36594f66308ebaf4487650a605c509267bb8226c2e8",
+      "test": "7baa23aec2e35c4744d2f2cf8bccf3b65b773f678d3244caf867551b8a8a8406"
+    }
+  },
+  "gguf": {
+    "base_f16": {
+      "file": "qwen3-8b-production-v1-f16.gguf",
+      "outtype": "f16",
+      "bytes": 16388044128,
+      "sha256": "d43909377abb40e9580face54565aac2bde047dc06025ea8a9d297c2df6472f5",
+      "tensor_count": 399,
+      "note": "中间产物，量化前的完整精度 GGUF；加载 Q4_K_M 成功前不删除。不用于运行时加载。"
+    },
+    "base_q4_k_m": {
+      "file": "qwen3-8b-production-v1-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "bytes": 5027784032,
+      "sha256": "ab7a5d34757a8dc75bc20ef12f6e3ca129c426d31ed0ab79cd4485c9c6797328",
+      "tensor_count": 399,
+      "architecture": "qwen3",
+      "block_count": 36,
+      "gguf_general_file_type": 15
+    },
+    "adapter_lora": {
+      "file": "customer-service-production-v1-lora.gguf",
+      "outtype": "f16",
+      "bytes": 87328640,
+      "sha256": "7339a25c754584ba03a824751602f16672ec1435b2f81e8272c0655231022a71",
+      "tensor_count": 504,
+      "adapter_type": "lora",
+      "lora_alpha": 32.0,
+      "lora_rank": 16,
+      "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+      "merged": false,
+      "load_flag": "--lora",
+      "adapter_scale": 1.0
+    }
+  },
+  "runtime": {
+    "engine": "llama.cpp (llama-server)",
+    "installed_via": "homebrew",
+    "brew_version": "10180",
+    "server_commit": "11b068d06",
+    "acceleration": "Apple Metal",
+    "endpoint": "http://127.0.0.1:8002",
+    "bind_note": "只监听 127.0.0.1，不对外暴露；FastAPI（127.0.0.1:8000）是唯一对外入口。",
+    "expected_reasoning": "off"
+  },
+  "verification": {
+    "howToVerify": [
+      "shasum -a 256 models/gguf/qwen3-8b-production-v1/qwen3-8b-production-v1-Q4_K_M.gguf",
+      "shasum -a 256 models/gguf/qwen3-8b-production-v1/customer-service-production-v1-lora.gguf",
+      "对比本文件 gguf.base_q4_k_m.sha256 / gguf.adapter_lora.sha256"
+    ]
+  }
+}
