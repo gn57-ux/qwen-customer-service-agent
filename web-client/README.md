@@ -32,7 +32,9 @@ web-client/
 - 组件层只能通过 `useClient()` 访问后端，⛔ 不得出现 `fetch(`/`axios`/`new MastraClient(`。
 - 前端只允许访问 Mastra 服务（默认 `:4111`），⛔ 不得直连 FastAPI(8000)/Mock(8001)/
   llama-server(8002)/Qdrant(6333)/Reranker(8787)/Ollama(11434)。
-- 全局 0 圆角设计系统（`* { border-radius: 0 !important }`），组件层不写 `rounded-*`。
+- 圆角系统（2026-08-01 起）：分层圆角（`DEFAULT:12px lg:16px xl:24px full:9999px`
+  + 大量任意值），逐组件数值见 `frontend-workbench/specs/9.stitch-v2-visual-
+  restoration/design.md`（旧版"全局 0 圆角"已被用户明确推翻，改动前先确认）。
 - 右栏「处理依据」的所有展示项必须能追溯到 `ChatResponseBody` 的结构化字段，
   ⛔ 不得对 `reply` 正文做正则/关键词解析来推断状态。
 
