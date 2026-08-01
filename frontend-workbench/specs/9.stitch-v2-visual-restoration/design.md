@@ -80,7 +80,13 @@ FOUC）。
   （`translate-x-1/2 translate-y-1/2`），`pointer-events-none`。
 - 主容器：`max-w-[1920px] mx-auto`，外边距 `m-4`（16px，`lg:` 断点即
   ≥1024px 时 `m-8`=32px），`bg-content-bg`，`rounded-lg`（=16px），
-  `border border-border-color`，`shadow-main` + `shadow-inner-top`。
+  `border border-border-color`，`shadow-main-with-inner`（**不是**
+  `shadow-main shadow-inner-top` 两个 Tailwind class 并列——实测发现
+  box-shadow 是单值属性，两个 shadow-* 工具类共享同一个 `--tw-shadow`
+  变量，样式表顺序在后的会完全覆盖前一个，不会叠加；新稿 HTML 原样
+  就是两个 class 并列写法，但那样只有其中一层阴影会真实生效，不符合
+  "浏览器最终像素"验收标准，已在 `styles.css` 手动合并成一个组合
+  `box-shadow` 值，同时包含外部投影与内部顶部高光）。
 
 **验收**：1920px 视口下主容器四周应有可见留白与阴影投射（不是贴边）；
 1024px 以下 `m-8`→`m-4` 的过渡需实测（Tailwind `lg:` 断点=1024px，

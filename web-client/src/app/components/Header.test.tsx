@@ -15,14 +15,20 @@ function statusOf(state: ServiceState): ServiceStatusBody {
 const noop = () => {};
 
 describe("Header", () => {
-  it("固定顶栏结构：fixed top-0 w-full z-50 h-16（AC-001）", () => {
+  it("顶栏结构：Stitch v2 起改为主容器 flex 流内的毛玻璃顶栏（不再 fixed），w-full z-50 h-16 shrink-0", () => {
     const { container } = render(<Header status={statusOf("unknown")} onClearSession={() => {}} onRetryStatus={noop} />);
     const header = container.querySelector("header")!;
-    expect(header.className).toContain("fixed");
-    expect(header.className).toContain("top-0");
+    // 不再 fixed/top-0——顶栏现在是主容器（App.tsx 的悬浮卡片 div）flex 流
+    // 里的第一个子元素，跟随主容器一起留白/圆角/阴影，而不是独立铺满视口。
+    expect(header.className).not.toContain("fixed");
     expect(header.className).toContain("w-full");
     expect(header.className).toContain("z-50");
     expect(header.className).toContain("h-16");
+    expect(header.className).toContain("shrink-0");
+    // Stitch v2 毛玻璃质感：半透明背景 + 模糊 + 60% 透明度底边框。
+    expect(header.className).toContain("bg-content-bg/80");
+    expect(header.className).toContain("backdrop-blur-md");
+    expect(header.className).toContain("border-border-color/60");
   });
 
   it("副标题使用 JetBrains Mono（font-code），标题使用 Inter（font-h2）（AC-002）", () => {
@@ -54,13 +60,21 @@ describe("Header", () => {
     expect(within(error.container).getByText("本地模型: 异常")).toBeTruthy();
   });
 
-  it("状态点为 0 圆角方块（AC-010，由全局 * {border-radius:0} 保证，这里验证未额外写 rounded-*）", () => {
-    const { container } = render(<Header status={statusOf("online")} onClearSession={() => {}} onRetryStatus={noop} />);
-    const dot = container.querySelector("span.bg-success-green")!;
-    expect(dot.className).not.toMatch(/rounded/);
+  it("Stitch v2 起状态点为圆形（w-1.5 h-1.5 rounded-full），在线态额外带 glow-green 辉光", () => {
+    const online = render(<Header status={statusOf("online")} onClearSession={() => {}} onRetryStatus={noop} />);
+    const onlineDot = online.container.querySelector("span.bg-success-green")!;
+    expect(onlineDot.className).toContain("rounded-full");
+    expect(onlineDot.className).toContain("w-1.5");
+    expect(onlineDot.className).toContain("glow-green");
+    online.unmount();
+
+    // 非在线态不带辉光——辉光语义是"一切正常"，不该出现在异常/未知状态上。
+    const degraded = render(<Header status={statusOf("degraded")} onClearSession={() => {}} onRetryStatus={noop} />);
+    const degradedDot = degraded.container.querySelector("span.bg-safety-text")!;
+    expect(degradedDot.className).not.toContain("glow-green");
   });
 
-  it("清空会话按钮点击触发回调，图标 18px，文案 hidden md:inline", () => {
+  it("清空会话按钮点击触发回调，图标 20px，文案 hidden md:inline", () => {
     const onClearSession = vi.fn();
     const { getByRole } = render(<Header status={statusOf("unknown")} onClearSession={onClearSession} onRetryStatus={noop} />);
     const button = getByRole("button", { name: /清空会话/ });
@@ -68,7 +82,7 @@ describe("Header", () => {
     expect(onClearSession).toHaveBeenCalledOnce();
 
     const icon = button.querySelector(".material-symbols-outlined")!;
-    expect(icon.className).toContain("text-[18px]");
+    expect(icon.className).toContain("text-[20px]");
     expect(icon.textContent).toBe("delete");
 
     const label = button.querySelector("span.hidden.md\\:inline")!;

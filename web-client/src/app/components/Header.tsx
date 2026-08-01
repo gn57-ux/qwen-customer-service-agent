@@ -4,7 +4,7 @@
  * 唯一的外部触发口是这里暴露的 refresh()（供 feature 5 在聊天 done/error 后调用）。
  */
 import type { ServiceState, ServiceStatusBody } from "../../types.ts";
-import { STATE_DOT_CLASS, STATE_LABEL } from "./service-status-view.ts";
+import { STATE_DOT_CLASS, STATE_GLOW_CLASS, STATE_LABEL } from "./service-status-view.ts";
 
 const SERVICE_ITEMS: Array<{ key: keyof ServiceStatusBody; label: string }> = [
   { key: "localModel", label: "本地模型" },
@@ -24,7 +24,7 @@ export interface HeaderProps {
 function StatusItem({ label, state }: { label: string; state: ServiceState }) {
   return (
     <div className="flex items-center gap-2">
-      <span className={`w-2 h-2 block ${STATE_DOT_CLASS[state]}`} />
+      <span className={`w-1.5 h-1.5 block rounded-full ${STATE_DOT_CLASS[state]} ${STATE_GLOW_CLASS[state]}`} />
       {label}: {STATE_LABEL[state]}
     </div>
   );
@@ -33,9 +33,9 @@ function StatusItem({ label, state }: { label: string; state: ServiceState }) {
 export function Header({ status, onClearSession, onRetryStatus, onOpenSessions }: HeaderProps) {
   return (
     <header
-      className="bg-content-bg border-b border-border-color fixed top-0 w-full z-50
+      className="bg-content-bg/80 backdrop-blur-md border-b border-border-color/60 w-full z-50
                  flex justify-between items-center px-gutter h-16
-                 text-text-secondary font-body-md"
+                 text-text-secondary font-body-md shrink-0"
     >
       <div className="flex items-center gap-4">
         {onOpenSessions && (
@@ -50,8 +50,8 @@ export function Header({ status, onClearSession, onRetryStatus, onOpenSessions }
             </span>
           </button>
         )}
-        <h1 className="font-h2 text-h2 font-bold text-text-primary">智修客服</h1>
-        <span className="text-text-muted font-code text-code border-l border-border-color pl-4 hidden md:inline">
+        <h1 className="font-h2 text-[22px] font-bold text-text-primary tracking-tight">智修客服</h1>
+        <span className="text-text-muted font-code text-[13px] border-l border-border-color/60 pl-4 hidden md:inline tracking-wide">
           家电售后智能助手
         </span>
       </div>
@@ -73,10 +73,11 @@ export function Header({ status, onClearSession, onRetryStatus, onOpenSessions }
         type="button"
         onClick={onClearSession}
         aria-label="清空会话"
-        className="hover:text-brand-primary transition-colors duration-200 cursor-pointer
-                   active:opacity-70 text-text-secondary font-label-sm flex items-center gap-2"
+        className="hover:bg-brand-light-bg transition-colors duration-200 cursor-pointer
+                   active:opacity-70 text-text-secondary font-label-sm flex items-center gap-2
+                   p-2 rounded-md"
       >
-        <span aria-hidden="true" className="material-symbols-outlined text-[18px]">
+        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
           delete
         </span>
         <span className="hidden md:inline">清空会话</span>

@@ -17,3 +17,13 @@ export const STATE_DOT_CLASS: Record<ServiceState, string> = {
   degraded: "bg-safety-text",
   error: "bg-safety-text",
 };
+
+/** Stitch v2 顶栏状态点辉光：只有"在线"态才有柔和辉光（`.glow-green`，
+ * styles.css 定义），unknown/degraded/error 三态是纯色硬点——辉光本身
+ * 语义上是"一切正常"的强调，不该用在异常/未知状态上。 */
+export const STATE_GLOW_CLASS: Record<ServiceState, string> = {
+  unknown: "",
+  online: "glow-green",
+  degraded: "",
+  error: "",
+};
