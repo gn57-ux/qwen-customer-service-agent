@@ -28,9 +28,11 @@
       未选中项四角圆角 6px（Codex Review 发现并修复：曾与选中态共用
       `rounded-r-md` 导致未选中项左侧方角；曾用 `w-full`+`ml-[3px]`
       导致溢出侧栏 3px，已改 `w-[calc(100%-3px)]`）
-- [ ] 5. 中间消息与安全卡片还原：用户气泡不对称圆角
-      `12px/12px/12px/4px`、安全卡片颜色与圆角，肉眼可辨不对称气泡 +
-      颜色 `getComputedStyle` 核实
+- [x] 5. 中间消息与安全卡片还原：用户气泡不对称圆角
+      `12px/12px/12px/4px`、渐变背景、`px-5 py-3.5`（Codex Review 发现
+      并修复：曾遗留旧的 `px-6 py-4`）；安全卡改用新稿独立配色
+      （`#F2C5BE`/`#FDF5F3`/`#C55B51`，非旧 `safety-*` token），实测
+      `getComputedStyle` 核实 padding/圆角/背景渐变均正确
 - [ ] 6. 右栏证据面板还原：宽度 320px（断点 `min-[1100px]`）、引用卡片
       圆角 12px + hover 阴影加深、两种优先级左边框颜色区分
 - [ ] 7. 输入区还原：先用 Stitch MCP 重新定位输入区真实 HTML 片段，
