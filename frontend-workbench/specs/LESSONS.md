@@ -108,3 +108,20 @@
 **技术要点（可复用）**：
 - 逐字符扫描配深度计数器来"按顶层分隔符切分语句"，是解析简单类结构化文本（不需要完整语法树）时的轻量手段，但每种"看起来像括号但其实不是"的符号（`=>`、字符串/注释内的括号、正则字面量等）都要单独处理——本次只处理了 `=>`，如果契约类型里出现字符串字面量类型包含 `<`/`>` 字符，会是下一个坑。
 - 验证"解析器改动确实修复了问题"的低成本手段：不引入 mock 框架，直接用 `fs.writeFileSync` 写一份"故意改错"的源码副本到临时文件，跑同一个提取函数比较结果，再删除临时文件——比为一次性验证去搭建复杂的测试夹具更快。
+
+## 2026-08-01 — Feature 9: stitch-v2-visual-restoration（任务 0+1）
+
+**`FontFaceSet.check()` 的浏览器语义不可靠，连续三轮 Codex Review 才收敛到"直接查 FontFace 对象状态"这个唯一可靠方案：**
+
+1. **第一版**：只等 `document.fonts.ready` resolve 就显示图标。Review 指出 `ready` 表示"所有字体请求都处理完了"，失败也是一种处理完——Google Fonts 被墙时 `ready` 照样 resolve，会把 fallback 渲染的图标名称文字（`delete`/`arrow_upward`）暴露给用户。
+2. **第二版**：加 `document.fonts.check('24px "Material Symbols Outlined"')` 判断。Review 指出省略第二个 `text` 参数时，`check()` 用的默认测试文本可能命中"随便什么字体都能画出来"的宽松匹配，测的是"能不能渲染任意文本"而不是"目标字体是否真的可用"。
+3. **第三版**：给 `check()` 传入具体图标连字符作为第二参数（`check(font, "delete")`）。Review 第三次指出：`check()` 本身的浏览器实现语义就是不可靠的——即使目标 `@font-face` 从未注册成功，`check()` 也可能因为"没有找到需要等待的匹配字体"这种误报逻辑返回 `true`，与传不传第二参数无关，是这个 API 本身的问题。
+4. **最终版**：完全放弃 `check()`，直接遍历可迭代的 `document.fonts`（`FontFaceSet`），查找 `family` 精确匹配（去掉可能带的引号）且 `status === "loaded"` 的 `FontFace` 对象——这是唯一不依赖浏览器 API 模糊实现细节的判断方式，与最初用 `[...document.fonts].map(f => f.family + ' ' + f.status)` 在真实浏览器里诊断问题时验证过的观察方式完全一致。
+
+**教训**：涉及"某个资源是否真的加载成功"这类判断时，如果平台提供了一个看似专门为此设计的便捷 API（`FontFaceSet.check()`），不要想当然地信任它的返回值语义就是"是/否加载成功"——要么去规范里确认它的精确定义，要么（更可靠）直接检查底层状态对象本身（这里是 `FontFace.status`），跳过任何"帮你判断"的中间层。三轮 review 暴露的不是同一个 bug 的三个变种，而是同一个方法论错误（"信任一个语义模糊的便捷 API"）在不同参数组合下的三次重复。
+
+**技术要点（可复用）**：
+- `document.fonts` 在 jsdom 测试环境下是 `undefined`（CSS Font Loading API 未实现），依赖它的 hook 必须显式做存在性检查并降级，否则组件测试会因 `TypeError` 集体失败——这类"仅浏览器可用的全局 API"，写 hook 时第一件事就是想清楚 jsdom 降级路径，而不是写完再补。
+- 测试可迭代对象（`FontFaceSet`）时，mock 只需要实现 `Symbol.iterator` 返回一个 generator，不需要实现完整接口——`{ [Symbol.iterator]: function* () { yield* faces } }` 就足以让 `for...of` 正常工作。
+- 图标加载防闪烁的实现分工：CSS 负责默认隐藏 + 状态类切换（`opacity:0` / `html.icons-ready .material-symbols-outlined{opacity:1}`），JS 只负责"什么时候可以切换状态类"这一个职责——不要把隐藏逻辑也写进 JS（内联 style 操作），职责分离后两端都更容易单独测试。
+- 关于"全局 0 圆角"这类写进 `.claude/rules/` 的强约束：一旦被用户在后续会话里明确推翻，必须同步更新写死这条约束的所有文档位置（`CLAUDE.md` + 对应 `rules/*.md`），否则未来的会话会读到过时的强约束、把新决策当成需要"改回去"的偏差——本次搜索 `grep -rn "0 圆角"` 定位到两处并逐一更新，改动 token 本身时要顺手做这一步，不要留到事后。

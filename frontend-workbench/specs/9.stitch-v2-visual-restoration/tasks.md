@@ -5,13 +5,16 @@
 硬性底线：不改 `mastra-agent/**`/契约/业务逻辑；保留 161 个现有测试与
 3 个门禁；单元测试通过但截图不合格 = 任务失败。
 
-- [ ] 0. 全局 token 准备：更新 `tailwind.config.ts`（圆角/boxShadow/
+- [x] 0. 全局 token 准备：更新 `tailwind.config.ts`（圆角/boxShadow/
       body-md 行高），更新 `styles.css`（移除全局 0 圆角规则、新增
       `.glow-blue`/`.glow-green`/`.bg-gradient-page`），`npm run
       typecheck && npm run build` 通过
-- [ ] 1. 字体与图标加载修复：`useIconFontReady`/等价方案 + 可见文本
-      扫描测试 + 连续截图验证无文字闪现，颜色/圆角/阴影：不涉及
-      （本任务只管字体加载时序）
+- [x] 1. 字体与图标加载修复：`useIconFontReady` 直接遍历 `document.fonts`
+      查找 `family` 精确匹配且 `status==="loaded"` 的 `FontFace`（不用
+      `FontFaceSet.check()`，其语义在三轮 Codex Review 中被证明不可靠）+
+      styles.css 静态扫描测试 + 真实浏览器核验 `icons-ready`/opacity/
+      `document.fonts` 状态，颜色/圆角/阴影：不涉及（本任务只管字体
+      加载时序）
 - [ ] 2. 全局背景与主容器质感：光晕装饰 + 主容器留白/圆角 16px/
       `shadow-main`+`shadow-inner-top`，1920px 截图核验四周留白与
       阴影，确认无横向/纵向溢出
