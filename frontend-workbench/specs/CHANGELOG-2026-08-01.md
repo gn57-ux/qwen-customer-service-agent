@@ -48,3 +48,13 @@
   下的验收替代方案：逐任务记录 `getComputedStyle`/
   `getBoundingClientRect`/`scrollWidth` 的具体实测数值，而不是笼统声明
   "因工具限制未截图"。
+
+## Feature 9 定向修正：移除预设快捷问题 chip
+
+首轮验收遗漏：`Composer.tsx` 仍保留四条预设维修/订单示例快捷问题 chip
+（此前设计任务 7 里记录为"新稿未渲染该场景，保持现状"的空白项）。用户
+明确裁定最终决定为**不显示预设快捷问题**，已整体移除该常量、渲染容器
+与 `map` 逻辑；输入框借助父级 `flex flex-col gap-3` 自动上移，无需
+手动调整 margin。`Composer.test.tsx` 同步替换为"确认四段文案不作为
+按钮渲染"的断言。已扫描确认 `web-client/src` 生产代码不再含这四段文案，
+测试数据中的合理保留用法未被误删。
