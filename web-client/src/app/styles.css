@@ -2,11 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 逐字来自 screen HTML 的 <style>（frontend-workbench/docs/assets/workbench-stitch.html）。
-   全局 0 圆角：组件层不要写 rounded-full 等 rounded-* 类再指望被这里覆写，
-   直接写成 0 圆角方块更清楚（见需求文档 §3.3）。 */
-* {
-  border-radius: 0px !important;
+/* Stitch v2 视觉还原（frontend-workbench/docs/assets/stitch-v2/
+   workbench-stitch-v2.html）逐字迁移的自定义 class——这三个不是
+   tailwind.config 的 boxShadow/背景 token，是新稿内联 <style> 里
+   直接写的具名 class，照抄以保持与设计稿逐字节一致。
+   ⛔ 不再全局强制 0 圆角（旧版决策，已被用户明确推翻）——组件层的
+   rounded-* 现在按 tailwind.config.ts 的 borderRadius token 或任意值
+   正常生效，改动前查 frontend-workbench/specs/9.stitch-v2-visual-
+   restoration/design.md 的逐组件圆角数值，不要凭直觉改写。 */
+.bg-gradient-page {
+  background: linear-gradient(135deg, #f5f8fc 0%, #edf2f7 100%);
+}
+.glow-blue {
+  box-shadow: 0 0 12px rgba(79, 111, 143, 0.4);
+}
+.glow-green {
+  box-shadow: 0 0 8px rgba(63, 124, 95, 0.6);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -15,4 +26,15 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* 任务 1：字体与图标加载修复——document.fonts.ready resolve 前，
+   material-symbols-outlined 图标一律透明，避免 fallback 字体把图标名称
+   （arrow_upward/delete 等）当作可见文字闪现；useIconFontReady() 在
+   ready 后给 <html> 加 icons-ready class。 */
+.material-symbols-outlined {
+  opacity: 0;
+}
+html.icons-ready .material-symbols-outlined {
+  opacity: 1;
 }

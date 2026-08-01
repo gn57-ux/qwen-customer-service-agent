@@ -1,0 +1,2 @@
+40f5431847a2264124064301dacdac582f8278384cc984d66d4c65f0667d1654  workbench-stitch-v2.html
+619da7d01ffaf1973c44dff5466cb4f2168e951f1dc07b53a93fdd547484d690  workbench-stitch-v2-screenshot.jpg

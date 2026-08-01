@@ -40,8 +40,10 @@ frontend-workbench/  # 前端需求/设计/开发规格（specs/），LESSONS.md
 - **订单详情只读 `order.details` 白名单**（10 个可空字段），⛔ 禁止解析泛型
   `toolCalls[].result`；字段为 `null` 时隐藏该行/显示"—"，⛔ 不得填默认值；
   `canCancel: null` 不等于 `false`，不得回落。
-- **全局 0 圆角设计系统**（`web-client/src/app/styles.css` 强制），组件层不写
-  `rounded-*`。
+- **圆角系统（2026-08-01 起变更）**：不再是全局 0 圆角——已按新版 Stitch
+  设计稿改为分层圆角（`DEFAULT:12px lg:16px xl:24px full:9999px` +
+  大量任意值），详见 `.claude/rules/frontend-conventions.md`「设计系统」
+  与 `frontend-workbench/specs/9.stitch-v2-visual-restoration/design.md`。
 - 详见 `.claude/rules/frontend-conventions.md`、
   `frontend-workbench/specs/LESSONS.md`（按 feature 记录的完整踩坑历史）与
   `frontend-workbench/specs/memory/`（按主题索引的可复用经验）。
@@ -64,3 +66,9 @@ cd web-client && npm run smoke              # 对真实 :4111 服务做端到端
   + `mock.module()` 挂载真实 Hono route 测试，不需要起完整服务链路。
 - 计数类展示（召回数/重排数）单测要用非 20/5 的构造值（如 17/3），配合
   `gate-no-hardcoded-count.sh` 的文案正则形成双重防护。
+
+## 其他规则
+
+@rules/coding-style.md
+@rules/security.md
+@rules/git-workflow.md

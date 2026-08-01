@@ -31,11 +31,21 @@ globs: web-client/src/**/*.ts,web-client/src/**/*.tsx
 
 ## 设计系统
 
-- 全局 0 圆角（`src/app/styles.css` 的 `* { border-radius: 0 !important }`），
-  组件层不写 `rounded-*` 类。
+- **圆角系统（2026-08-01 起，Feature 9 变更）**：不再是全局 0 圆角——旧的
+  `* { border-radius: 0 !important }` 已移除，`tailwind.config.ts` 的
+  `borderRadius` 现为 `DEFAULT:12px lg:16px xl:24px full:9999px`（逐字
+  迁移自新版 Stitch 设计稿，见下）。组件层**可以**使用 `rounded-*`，但
+  必须按 `frontend-workbench/specs/9.stitch-v2-visual-restoration/
+  design.md` 里逐组件列出的具体数值（含大量任意值如 `rounded-[10px]`/
+  `rounded-[12px]`/不对称圆角），⛔ 不要凭直觉统一套用某一个圆角值。
+  这一决策是经用户明确确认后推翻旧版"全局 0 圆角"约定的，改回 0 圆角
+  前必须先跟用户确认，不能因为看到旧提交历史就擅自改回去。
 - 颜色/字体/间距/断点令牌逐字迁移自 `frontend-workbench/docs/assets/
-  workbench-stitch.html`（Stitch 设计稿），改动前先核对该文件，不要凭直觉
-  改写数值（尤其断点：`min-[1100px]` 不是 `lg`(1024)）。
+  stitch-v2/workbench-stitch-v2.html`（Stitch 新版设计稿，2026-08-01 起
+  的唯一视觉权威；旧版 `workbench-stitch.html` 仅作历史对比），改动前
+  先核对该文件，不要凭直觉改写数值（尤其断点：`min-[1100px]` 不是
+  `lg`(1024)；圆角/阴影等新增 token 见 `docs/assets/stitch-v2/
+  DESIGN-BASELINE-v2.md`）。
 - 响应式抽屉（`components/Drawer.tsx`）必须复用桌面版的同一份内容组件
   （`EvidencePanelContent`/`SessionListContent`），不要复制一份——否则两处
   会随迭代逐渐不一致。

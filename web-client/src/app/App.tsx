@@ -12,11 +12,13 @@ import { MainChat } from "./components/MainChat.tsx";
 import { EvidencePanelContent, RightPanel } from "./components/RightPanel.tsx";
 import type { Message } from "./chat-types.ts";
 import { useChatStream } from "./hooks/use-chat-stream.ts";
+import { useIconFontReady } from "./hooks/use-icon-font-ready.ts";
 import { useServiceStatus } from "./hooks/use-service-status.ts";
 import { createSession, titleFromContent, DEFAULT_TITLE, type Session } from "./session.ts";
 import type { CustomerServiceClient } from "../client.ts";
 
 function Workbench() {
+  useIconFontReady();
   const { data: status, refresh: refreshStatus } = useServiceStatus();
   const [sessions, setSessions] = useState<Session[]>(() => [createSession()]);
   const [activeId, setActiveId] = useState(() => sessions[0].id);
