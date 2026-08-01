@@ -1,9 +1,12 @@
 /**
- * 输入区（F-006～F-010）。快捷 chip 只填入输入框，不自动发送（F-007/AC-008）。
+ * 输入区（F-006～F-010）。
+ *
+ * 2026-08-01（Feature 9 定向修正）：此前的四条预设维修/订单示例快捷
+ * 问题 chip 已按最终视觉决定移除，不再渲染——详见
+ * frontend-workbench/specs/9.stitch-v2-visual-restoration/design.md
+ * 「任务 7」的更正记录。不要凭旧版 F-007/AC-008 的注释误以为还需要恢复。
  */
 import { useState } from "react";
-
-const QUICK_PROMPTS = ["冰箱不制冷", "电视开机黑屏", "显示器无信号", "查询ORD1001"];
 
 export interface ComposerProps {
   isStreaming: boolean;
@@ -24,20 +27,6 @@ export function Composer({ isStreaming, onSend, onStop }: ComposerProps) {
   return (
     <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-content-bg via-content-bg to-transparent pb-6 px-4 md:px-8 pt-4 z-20">
       <div className="max-w-4xl mx-auto flex flex-col gap-3">
-        <div className="flex gap-2 mb-1 overflow-x-auto no-scrollbar">
-          {QUICK_PROMPTS.map((prompt) => (
-            <button
-              key={prompt}
-              type="button"
-              onClick={() => setValue(prompt)}
-              className="border border-border-color text-text-secondary text-[12px] px-3 py-1
-                         hover:bg-brand-light-bg transition whitespace-nowrap"
-            >
-              {prompt}
-            </button>
-          ))}
-        </div>
-
         <div className="relative bg-white rounded-[12px] border border-input-border shadow-soft focus-within:border-[#8BA5C2] focus-within:ring-1 focus-within:ring-[#8BA5C2]/50 transition-all">
           <textarea
             value={value}
