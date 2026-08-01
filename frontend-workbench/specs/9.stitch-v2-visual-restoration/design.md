@@ -165,12 +165,37 @@ FOUC）。
 
 ## 任务 7：输入区还原
 
-新稿 HTML 片段中输入区细节未在本次提取的片段中完整展开，实施前需要
-用 `get_screen`/HTML 全文重新定位输入区对应的 `<div>` 结构，逐字段核对
-（不得凭第 5/6 节的相邻卡片风格臆测输入框圆角/边框/阴影数值）。
+已重新定位新稿 HTML 全文的输入区真实片段（搜索"输入"关键字定位到
+`<!-- Bottom Input Area -->` 注释块），逐字段核对结果：
 
-**验收**：与任务 1-6 相同标准——像素级截图核验，重点检查输入框在
-四档视口下是否遮挡消息区、发送按钮的图标是否出现文字闪烁。
+- 外层容器：`absolute bottom-0 left-0 w-full bg-gradient-to-t
+  from-content-bg via-content-bg to-transparent pb-6 px-4 md:px-8
+  pt-4 z-20`——用渐变淡出遮罩替代旧的纯色背景 + 顶部实线边框，视觉上
+  让输入区与上方消息列表之间有柔和过渡而不是硬分割线。
+- 输入框容器：`relative bg-white rounded-[12px] border
+  border-[#CBD5E1] shadow-soft focus-within:border-[#8BA5C2]
+  focus-within:ring-1 focus-within:ring-[#8BA5C2]/50`——白底 + 12px
+  圆角 + 聚焦态边框/光环颜色变化，均为任意值，不在 19 个具名 token 里。
+- `textarea`：`p-4 pb-12 text-[15px] placeholder-[#94A3B8]
+  rounded-[12px]`（原实现是 `font-body-md`/`placeholder-text-muted`，
+  已按新稿改为直接的字号/占位符任意色值）。
+- 发送按钮：`bg-[#344E68] text-white p-2 rounded-lg
+  hover:bg-[#2B4158] hover:-translate-y-[1px] shadow-sm`，图标
+  `text-[18px]`（原实现是 `text-[20px]`，已按新稿改小）；`rounded-lg`
+  引用的是 `tailwind.config.ts` 自定义后的 16px，不是 Tailwind 默认
+  8px。**"停止生成"按钮新稿未提供样式**（该次截图不是流式中状态），
+  按钮色保留品牌色 `brand-primary` 以维持语义区分，但同步应用了圆角/
+  阴影/hover 位移等新稿通用交互效果，属于合理外推，不是凭空臆造数值。
+- 底部提示文字：`text-[12px] text-[#94A3B8]`（原来是
+  `text-text-muted`，已改任意色值）。
+- **快捷 Chip 未出现在这次新稿截图/HTML 里**（该会话已有历史消息，
+  推测 Chip 可能只在空会话展示，或者这版设计干脆未覆盖该交互）——
+  没有新证据可依据，Chip 视觉保持现状不变，功能（填入不发送）不受
+  影响，属于已知的验收空白项，留给用户或后续版本的 Stitch 稿确认。
+
+**验收**：与任务 1-6 相同标准——已用 `getComputedStyle` 核实输入框
+圆角 12px/白底、发送按钮 `#344E68`/圆角 16px；四档视口下是否遮挡消息区
+留给任务 8 统一核验。
 
 ## 任务 8：响应式与截图回归
 
