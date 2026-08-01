@@ -15,12 +15,14 @@
       styles.css 静态扫描测试 + 真实浏览器核验 `icons-ready`/opacity/
       `document.fonts` 状态，颜色/圆角/阴影：不涉及（本任务只管字体
       加载时序）
-- [ ] 2. 全局背景与主容器质感：光晕装饰 + 主容器留白/圆角 16px/
-      `shadow-main`+`shadow-inner-top`，1920px 截图核验四周留白与
-      阴影，确认无横向/纵向溢出
-- [ ] 3. 顶栏视觉还原：高度 64px、`backdrop-blur-md`、边框透明度
-      60%、状态点辉光、清空按钮圆角 12px，`getComputedStyle` 核实
-      高度与 `backdrop-filter`
+- [x] 2. 全局背景与主容器质感：光晕装饰 + 主容器留白/圆角 16px/
+      合并后的组合阴影（`shadow-main`+`shadow-inner-top` 并列不会叠加，
+      已在 styles.css 合并成一个值，见 design.md），1920px/1000px 实测
+      对称留白（32px/16px）、无横向溢出（`w-full`+margin 组合曾导致
+      裁切，已改用 `calc()` 显式宽度修复，Codex Review 定位）
+- [x] 3. 顶栏视觉还原：高度 64px、`backdrop-blur-md`、边框透明度
+      60%、状态点辉光（仅在线态）、清空按钮 `rounded-md`，
+      `getComputedStyle` 核实高度/圆角/box-shadow
 - [ ] 4. 左栏视觉还原：宽度 220px、新建会话按钮圆角 10px、选中态
       左边框 3px + 右侧圆角 12px，选中/未选中两态截图对比
 - [ ] 5. 中间消息与安全卡片还原：用户气泡不对称圆角

@@ -125,3 +125,17 @@
 - 测试可迭代对象（`FontFaceSet`）时，mock 只需要实现 `Symbol.iterator` 返回一个 generator，不需要实现完整接口——`{ [Symbol.iterator]: function* () { yield* faces } }` 就足以让 `for...of` 正常工作。
 - 图标加载防闪烁的实现分工：CSS 负责默认隐藏 + 状态类切换（`opacity:0` / `html.icons-ready .material-symbols-outlined{opacity:1}`），JS 只负责"什么时候可以切换状态类"这一个职责——不要把隐藏逻辑也写进 JS（内联 style 操作），职责分离后两端都更容易单独测试。
 - 关于"全局 0 圆角"这类写进 `.claude/rules/` 的强约束：一旦被用户在后续会话里明确推翻，必须同步更新写死这条约束的所有文档位置（`CLAUDE.md` + 对应 `rules/*.md`），否则未来的会话会读到过时的强约束、把新决策当成需要"改回去"的偏差——本次搜索 `grep -rn "0 圆角"` 定位到两处并逐一更新，改动 token 本身时要顺手做这一步，不要留到事后。
+
+## 2026-08-01 — Feature 9: stitch-v2-visual-restoration（任务 2+3）
+
+**改 `tailwind.config.ts` 后必须重启 Vite dev server，HMR 不会重新编译 PostCSS/Tailwind 配置——之前几轮"浏览器验证通过"其实测的是旧 token：** 修改 `borderRadius`/`boxShadow` 后直接在浏览器里刷新页面验证，`getComputedStyle` 量出来的圆角/阴影全是旧值（0px/none），一度怀疑是 class 没写对；实际原因是 Vite 的 HMR 只监听并热更新 `.css`/`.tsx` 源文件内容变化，`tailwind.config.ts` 的变化不在这个监听范围内，PostCSS 插件配置需要重启进程才会重新加载。**教训：改动 `tailwind.config.ts`（或任何构建工具配置文件）后，验证效果前先重启 dev server，不要信任"页面刷新就能看到最新配置"这个假设**——这类配置文件与源码文件的 HMR 行为不一致，是本次踩坑的根源。
+
+**Tailwind 的 `box-shadow`/`margin` 类工具函数不会"叠加"，两个 utility 同时写在 class 里时，谁生效取决于 Tailwind 生成样式表的内部顺序（不是 JSX 里的书写顺序），这个顺序对使用者不透明、不能凭直觉预测：**
+1. `shadow-main shadow-inner-top` 两个类同时使用，意图是让外部投影和内部高光叠加显示——但 `box-shadow` 是单值 CSS 属性，两个 Tailwind shadow-* 工具类的效果不会合并，只有样式表里排在后面的生效。这不是我们写错了，新稿 Stitch 生成的 HTML 原样就是这么写的（Stitch 生成工具本身也有这类 Tailwind 使用误区）。按"浏览器最终像素是唯一验收标准"，不能盲目照抄一个视觉上并不会按预期生效的写法，必须手动把两个 `box-shadow` 值合并成一个组合值。
+2. `w-full` + `mx-auto` + `m-4`/`lg:m-8` 同时使用会在两个层面出问题：`w-full` 把宽度显式钉死在父容器 100%，margin 再叠加上去会让总占用宽度超过父容器（100% + 2×margin），被 `overflow-hidden` 裁掉；`mx-auto` 和 `m-4` 同时设置 margin-left/right，Tailwind 按内部固定顺序生成规则，`mx-auto` 会赢，导致 `m-4` 的水平分量在断点以下直接消失。这个 bug 是 Codex Review 而不是我自己发现的——第一次浏览器验证只测了 `computed margin` 数值（看到 32px 就以为对了），没有测实际的 `getBoundingClientRect()` 左右间距和是否溢出，掩盖了问题。修复方式：不用 "100%宽度 + margin做留白" 这种依赖浏览器/工具链内部顺序才能凑对的组合，改用 `w-[calc(100%-2rem)]` 这种把留白直接算进宽度表达式里的写法，`mx-auto` 只用来在超过 `max-width` 后居中多余空间，不再和任何 margin 工具类竞争同一 CSS 属性。
+
+**教训（贯穿两处）**：涉及"两个 CSS 值需要共同生效"的场景（多重阴影、宽度+外边距），Tailwind 的工具类模型是"每个 class 对应一条完整的 CSS 声明"，不是"每个 class 贡献声明的一部分然后自动合并"——凡是两个工具类会写同一个 CSS 属性（`box-shadow`、`margin-left`/`margin-right` 等），效果就是覆盖而不是叠加，必须要么手写一个合并后的自定义 class，要么用不同的属性/维度分别控制（比如本例把留白直接编码进 `width` 表达式，让 `margin` 只负责居中）。验证这类问题时，只测 `getComputedStyle` 的汇总值（如 `margin: "32px"`）不够，要测最终几何结果（`getBoundingClientRect()` 的实际左右间距、`scrollWidth` 是否溢出）才能发现"数值对但没生效"或"数值本身就没被正确应用到最终布局"的问题。
+
+**技术要点（可复用）**：
+- 验证响应式留白/居中效果时，用 `element.getBoundingClientRect()` 算出 `rect.left` 和 `window.innerWidth - rect.right`，两者应该相等（对称留白）且都应该是期望的像素值——比只读 `getComputedStyle(...).margin` 更可靠，因为后者只反映声明的值，不反映 flex/grid 布局系统实际计算出的几何结果。
+- 改 `tailwind.config.ts`/`vite.config.ts`/`postcss.config.js` 这类构建配置文件后，固定动作是"杀掉旧 dev server 进程 → 重新启动 → 再验证"，不要依赖 HMR 自动生效。
