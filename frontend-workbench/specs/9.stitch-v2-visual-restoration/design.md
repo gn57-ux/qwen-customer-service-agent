@@ -119,9 +119,12 @@ FOUC）。
   处复用建议提为 token，本任务先按新稿原样使用任意值），文字白色，
   `rounded-[10px]`，`shadow-soft`，hover `bg-brand-primary-hover`。
 - 会话列表选中态：背景 `#E4ECF4`，左边框 `border-l-[3px]
-  border-[#4F6F8F]`，`shadow-inner-top`，`rounded-r-md`（=12px，只圆
-  右侧两角，因为左边有强调边框）。未选中项 hover
-  `bg-[#E4ECF4]/50`，左侧留 `ml-[3px]` 对齐选中项的边框宽度。
+  border-[#4F6F8F]`，`shadow-inner-top`，`rounded-r-md`（**更正**：不是
+  之前误写的 12px——`rounded-r-md` 用的是 Tailwind 内置 `md` 尺寸
+  （0.375rem=6px），`borderRadius.DEFAULT/lg/xl` 的自定义覆盖不影响
+  `md` 这个 key，新稿本身也确实是 6px 圆角，只圆右侧两角，因为左边有
+  强调边框）。未选中项 hover `bg-[#E4ECF4]/50`，左侧留 `ml-[3px]`
+  对齐选中项的边框宽度。
 
 **验收**：选中/未选中两态截图对比，边框宽度 3px、圆角只在右侧生效
 （左侧应为直角，与强调边框衔接）。

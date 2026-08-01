@@ -25,15 +25,15 @@ describe("LeftSidebar", () => {
     expect(aside.className).toContain("flex-shrink-0");
   });
 
-  it("激活项具备左侧竖条 + bold（AC-007），非激活项无该样式", () => {
+  it("激活项具备左侧强调竖条（Stitch v2 起 3px）+ 内部高光，非激活项无该样式（AC-007）", () => {
     const { getByText } = render(
       <LeftSidebar sessions={sessions()} activeId="a" onSelect={() => {}} onNewSession={() => {}} />,
     );
     const active = getByText(sessions()[0]!.title);
     const inactive = getByText(sessions()[1]!.title);
-    expect(active.className).toContain("border-l-2");
-    expect(active.className).toContain("font-bold");
-    expect(inactive.className).not.toContain("border-l-2");
+    expect(active.className).toContain("border-l-[3px]");
+    expect(active.className).toContain("shadow-inner-top");
+    expect(inactive.className).not.toContain("border-l-[3px]");
   });
 
   it("长标题项使用 truncate 防止撑破宽度（AC-008）", () => {

@@ -21,17 +21,17 @@ export function SessionListContent({ sessions, activeId, onSelect, onNewSession 
         <button
           type="button"
           onClick={onNewSession}
-          className="w-full bg-brand-primary text-content-bg font-label-sm text-label-sm py-3 px-4
-                     flex items-center justify-center gap-2 hover:bg-brand-primary-hover
-                     transition-colors mb-6"
+          className="w-full bg-[#344E68] text-content-bg font-label-sm text-label-sm py-2.5 px-4
+                     rounded-[10px] flex items-center justify-center gap-2 hover:bg-brand-primary-hover
+                     transition-colors shadow-soft mb-6"
         >
-          <span className="material-symbols-outlined" aria-hidden="true">
+          <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
             add
           </span>
           新建会话
         </button>
 
-        <h3 className="text-label-sm font-label-sm text-text-muted mb-4 tracking-wider">最近对话</h3>
+        <h3 className="text-[11px] font-bold text-text-muted mb-3 uppercase tracking-wider pl-2">最近对话</h3>
         <ul className="space-y-1">
           {sessions.map((session) => {
             const active = session.id === activeId;
@@ -41,10 +41,10 @@ export function SessionListContent({ sessions, activeId, onSelect, onNewSession 
                   type="button"
                   onClick={() => onSelect(session.id)}
                   aria-current={active ? "true" : undefined}
-                  className={`w-full text-left px-3 py-2 text-[14px] truncate transition-colors duration-200 ${
+                  className={`text-left px-3 py-2.5 text-[13px] truncate transition-colors duration-200 ${
                     active
-                      ? "bg-brand-light-bg text-text-primary border-l-2 border-brand-primary font-bold"
-                      : "text-text-secondary hover:bg-brand-light-bg"
+                      ? "w-full rounded-r-md bg-[#E4ECF4] text-text-primary border-l-[3px] border-[#4F6F8F] shadow-inner-top font-medium"
+                      : "w-[calc(100%-3px)] ml-[3px] rounded-md text-text-secondary hover:bg-[#E4ECF4]/50"
                   }`}
                 >
                   {session.title}
@@ -67,7 +67,7 @@ export interface LeftSidebarProps extends SessionListContentProps {}
 export function LeftSidebar(props: LeftSidebarProps) {
   return (
     <aside
-      className="hidden md:flex w-[220px] bg-sidebar-left-bg border-r border-border-color
+      className="hidden md:flex w-[220px] bg-sidebar-left-bg border-r border-border-color/60
                  flex-col justify-between p-4 flex-shrink-0 h-full overflow-y-auto no-scrollbar"
     >
       <SessionListContent {...props} />
