@@ -16,11 +16,13 @@ describe("SafetyCard", () => {
     expect(container.querySelector(".material-symbols-outlined")?.textContent).toBe("warning");
   });
 
-  it("样式符合规格：safety-border + safety-bg + p-3", () => {
+  it("样式符合 Stitch v2 规格：独立任意值配色 + 12px 圆角 + 3px 左强调边框", () => {
     const { container } = render(<SafetyCard text="文本" />);
     const card = container.firstElementChild!;
-    expect(card.className).toContain("border-safety-border");
-    expect(card.className).toContain("bg-safety-bg");
-    expect(card.className).toContain("p-3");
+    expect(card.className).toContain("border-[#F2C5BE]");
+    expect(card.className).toContain("bg-[#FDF5F3]");
+    expect(card.className).toContain("rounded-[12px]");
+    expect(card.className).toContain("border-l-[3px]");
+    expect(card.className).toContain("border-l-[#C55B51]");
   });
 });

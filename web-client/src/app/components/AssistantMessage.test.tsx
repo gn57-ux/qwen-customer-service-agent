@@ -132,7 +132,7 @@ describe("AssistantMessage", () => {
     const turn = doneTurn({ route: "safety", reply: "先不要自行拆机，请联系官方售后。" });
     const { container, getByText } = render(<AssistantMessage messageId="m1" turn={turn} />);
     expect(getByText("先不要自行拆机，请联系官方售后。")).toBeTruthy();
-    expect(container.querySelector(".bg-safety-bg")).toBeTruthy();
+    expect(container.querySelector(".border-l-\\[\\#C55B51\\]")).toBeTruthy();
     // 安全卡替换了普通段落，不应该同时出现两份正文
     expect(container.querySelectorAll("p").length).toBe(1);
   });
@@ -141,7 +141,7 @@ describe("AssistantMessage", () => {
     const turn = doneTurn({ route: "repair", reply: "维修建议正文" });
     const { container, getByText } = render(<AssistantMessage messageId="m1" turn={turn} />);
     expect(getByText("维修建议正文")).toBeTruthy();
-    expect(container.querySelector(".bg-safety-bg")).toBeNull();
+    expect(container.querySelector(".border-l-\\[\\#C55B51\\]")).toBeNull();
   });
 
   it("route=order 且调用了 queryOrderTool 且 order 存在时渲染订单卡（F-001/AC-002a）", () => {
@@ -200,7 +200,7 @@ describe("AssistantMessage", () => {
     });
     const { container, getByText } = render(<AssistantMessage messageId="m1" turn={turn} onRegenerate={() => {}} />);
     expect(getByText("你好，有什么可以帮你？")).toBeTruthy();
-    expect(container.querySelector(".bg-safety-bg")).toBeNull();
+    expect(container.querySelector(".border-l-\\[\\#C55B51\\]")).toBeNull();
     expect(container.querySelector('[id^="citation-"]')).toBeNull();
   });
 
