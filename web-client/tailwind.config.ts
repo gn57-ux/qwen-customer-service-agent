@@ -38,7 +38,7 @@ export default {
         "safety-border": "#E7B8B2",
         "citation-bg": "#E7F3F1",
         "citation-text": "#3F7C78",
-        "input-border": "#CBD5DF",
+        "input-border": "#CBD5E1",
       },
       borderRadius: {
         DEFAULT: "12px",

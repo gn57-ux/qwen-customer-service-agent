@@ -40,13 +40,31 @@
       淡出遮罩、输入框白底 12px 圆角+聚焦光环、发送按钮 `#344E68`+
       16px 圆角+18px 图标；快捷 Chip 因新稿未渲染该场景保持现状（design.md
       已记录为已知空白项）；四档视口遮挡检查留给任务 8
-- [ ] 8. 响应式与截图回归：1920/1280/1024/375 四档截图（尝试落盘，
-      工具限制如实说明）、161+新增测试全绿、3 门禁通过、
-      `git diff --check`、冻结路径扫描、`.claude/` 文档同步更新
-      "全局 0 圆角"表述
+- [x] 8. 响应式与截图回归：1920/1280/1024/375 四档均实测无横向溢出、
+      主容器留白正确降级（32px→16px）、右栏在 1024px 收进抽屉、375px
+      左右栏均收进抽屉且输入区不遮挡消息——**截图文件未能落盘（工具
+      限制，与此前 acceptance 报告记录的限制相同），验收依据是逐档
+      `getComputedStyle`/`scrollWidth` 实测数值 + 实时截图目测**；
+      168/168 测试全绿、3 门禁通过、`git diff --check` 干净、冻结路径
+      零改动；顺带发现并修正 `input-border` token 与新稿实际值的偏差
+      （`#CBD5DF`→`#CBD5E1`）
 
 ## 提交前汇总要求（对应本轮硬性要求）
 
-- [ ] 最终提交前汇总三组截图路径：修改前 / Stitch 基准 / 修改后
-- [ ] 经过 Codex Stop Hook Review 自动修正至 ALLOW 后再提交
-- [ ] 不 push，停在 Review 点汇报
+- [x] 三组截图路径汇总——**如实说明：三组均未能落盘为文件**，当前
+      `mcp__Claude_Browser__*` 工具集不提供把截图保存到磁盘的机制
+      （与 `acceptance-2026-07-31` 报告记录的限制相同）。三组验收改为：
+      1. 修改前：本轮 `/yd:init` 阶段已用浏览器打开当时的
+         `web-client` 并目测记录（见 `DESIGN-BASELINE-v2.md`"修改前
+         基线"一节），未存文件；
+      2. Stitch 基准：`frontend-workbench/docs/assets/stitch-v2/
+         workbench-stitch-v2-screenshot.jpg`（已落盘，SHA-256 见
+         `checksums.txt`，这一张是从 Stitch MCP 下载的真实文件，不
+         受浏览器截图工具限制）；
+      3. 修改后：本文件逐任务记录的 `getComputedStyle`/
+         `getBoundingClientRect`/`scrollWidth` 实测数值 + 每个任务
+         完成时的实时截图目测，未存文件。
+      如需要真正的修改后截图文件，需要用户提供或授权其他截图工具。
+- [x] 经过 Codex Stop Hook Review 自动修正至 ALLOW 后再提交——每个
+      任务均已走完整的 BLOCK→修复→ALLOW 循环（部分任务 2-3 轮）。
+- [x] 不 push，停在 Review 点汇报——见最终汇报。

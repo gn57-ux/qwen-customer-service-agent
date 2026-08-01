@@ -38,7 +38,7 @@ export function Composer({ isStreaming, onSend, onStop }: ComposerProps) {
           ))}
         </div>
 
-        <div className="relative bg-white rounded-[12px] border border-[#CBD5E1] shadow-soft focus-within:border-[#8BA5C2] focus-within:ring-1 focus-within:ring-[#8BA5C2]/50 transition-all">
+        <div className="relative bg-white rounded-[12px] border border-input-border shadow-soft focus-within:border-[#8BA5C2] focus-within:ring-1 focus-within:ring-[#8BA5C2]/50 transition-all">
           <textarea
             value={value}
             onChange={(e) => setValue(e.target.value)}
