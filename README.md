@@ -6,7 +6,7 @@
 
 ## 已实现功能
 
-- 使用 LLaMA Factory 对 Qwen3-4B-Instruct-2507 进行 4-bit NF4 QLoRA 微调
+- 使用 LLaMA Factory 对 Qwen3-8B 进行 4-bit NF4 QLoRA 微调
 - 加载基础模型与 LoRA Adapter；OpenAI 兼容的 `/v1/chat/completions` 接口，
   支持普通响应、流式响应和 Tool Call
 - Mastra Agent：`classifyRoute()` 确定性路由（安全/订单/维修/普通）+
@@ -22,6 +22,9 @@
   [`web-client/README.md`](web-client/README.md)
 
 ## 系统架构
+
+完整的逻辑架构、请求时序、训练流水线、数据职责边界、端口和模型资产说明见
+[`docs/项目完整架构.md`](docs/项目完整架构.md)。
 
 ```text
 坐席
@@ -42,7 +45,7 @@
 .
 ├─ adapters/                 # 最终 QLoRA Adapter（不包含训练 checkpoint）
 ├─ configs/                  # LLaMA Factory 训练与推理配置
-├─ datasets/                 # 课程冒烟训练数据
+├─ datasets/                 # 正式 640/80/80 数据、manifest 与审计报告
 ├─ knowledge/                # RAG 知识库源文档
 ├─ services/
 │  ├─ app.py                 # QLoRA OpenAI 兼容 API（FastAPI，:8000）
@@ -59,48 +62,28 @@
 │     └─ rag/                 # Qdrant 检索 + Reranker
 ├─ web-client/                # 客服工作台前端（React + Vite + Tailwind）
 │  └─ src/app/                # 详见 web-client/README.md
-├─ frontend-workbench/        # 前端需求/设计/开发规格文档（specs/）
-└─ start-*.bat                # Windows 启动脚本
+├─ frontend-workbench/        # Stitch 资产、前端需求/设计/验收文档
+├─ training/                  # 4090 八阶段训练与评测流水线
+└─ docs/                      # 实施方案与完整架构
 ```
 
 ## 环境
 
-- Windows 10
-- Python 3.11
-- NVIDIA GeForce RTX 5070 12GB
-- PyTorch 2.9.1 + CUDA 12.8
-- Transformers 4.56.2
-- LLaMA Factory 0.9.6.dev0
-- Node.js 24
-- Mastra 1.20.1
+- 训练：Ubuntu 22.04、RTX 4090 24GB、PyTorch 2.7.1+cu126、LLaMA Factory 0.9.5
+- 长期运行：Apple Silicon Mac 32GB、llama.cpp Metal、Qwen3-8B Q4_K_M + LoRA GGUF
+- 应用：Python 3.11、FastAPI、Node.js、Mastra 1.20.1、React/Vite
+- RAG：Qdrant、Ollama bge-m3（1024 维）、bge-reranker-v2-m3
 
 ## 启动
 
-需要先自行下载基础模型到：
+完整运行需要按依赖顺序启动 Qdrant、Ollama/bge-m3、Reranker、Mock 后端、
+llama-server、FastAPI、Mastra 与前端。模型身份与服务启停必须使用仓库中的
+受控脚本，详见：
 
-```text
-C:\AI\models\Qwen3-4B-Instruct-2507
-```
-
-最终 Adapter 默认位于：
-
-```text
-C:\AI\adapters\qwen3-4b\customer-service-smoke
-```
-
-依次运行：
-
-```text
-start-model-api.bat
-start-mock-backend.bat
-start-mastra-studio.bat
-```
-
-打开 Mastra Studio：
-
-```text
-http://localhost:4111/agents
-```
+- [`services/README.md`](services/README.md)
+- [`mastra-agent/README-RAG.md`](mastra-agent/README-RAG.md)
+- [`mastra-agent/README-AGENT.md`](mastra-agent/README-AGENT.md)
+- [`web-client/README.md`](web-client/README.md)
 
 ### 启动前端工作台
 
@@ -125,7 +108,7 @@ npm run dev   # http://localhost:5173
 
 ## 当前范围
 
-QLoRA 训练侧仍是课程冒烟规模（20 条数据，用于验证训练流程）；RAG（Qdrant 向量
-检索 + Reranker）、服务状态聚合探测、以及完整的 `web-client` 工作台前端已经
-实现并有测试/门禁覆盖。正式评估集与持久化记忆仍属于后续扩展。
-
+课程主链路已经完成：Qwen3-8B 正式 QLoRA 数据集与训练、FastAPI 推理、Mastra
+Agent、Mock Tools、维修 RAG、Cross-Encoder Reranker、Mastra Client 与 React
+工作台均有自动测试和真实端到端验收证据。多 Agent、复杂工作流、持久化会话
+记忆和额外管理后台不在本次必做范围内。
