@@ -1,6 +1,7 @@
 /**
- * 处理依据右栏（design.md 模块 2/3/4）。300px（xl 以上 320px），断点
- * `min-[1100px]`（⛔ 不是 lg/1024，见 LESSONS 风险点）。
+ * 处理依据右栏（design.md 模块 2/3/4）。固定 320px（Stitch v2 起不再有
+ * xl 断点前的 300px 中间态），断点 `min-[1100px]`（⛔ 不是 lg/1024，见
+ * LESSONS 风险点）。
  *
  * 三态：
  *   1. 当前会话还没有任何 AI 消息 → 整体空状态（F-013）。
@@ -70,8 +71,8 @@ export function EvidencePanelContent({ turn, messageId }: RightPanelProps) {
 export function RightPanel({ turn, messageId }: RightPanelProps) {
   return (
     <aside
-      className="hidden min-[1100px]:flex w-[300px] xl:w-[320px] bg-sidebar-right-bg
-                 border-l border-border-color flex-col h-full flex-shrink-0"
+      className="hidden min-[1100px]:flex w-[320px] bg-sidebar-right-bg
+                 border-l border-border-color/60 flex-col h-full flex-shrink-0"
     >
       <EvidencePanelContent turn={turn} messageId={messageId} />
     </aside>

@@ -7,9 +7,11 @@
 import { citationElementId } from "../citation.ts";
 import type { EvidenceSource } from "../evidence/derive.ts";
 
+/** Stitch v2 高优先级左边框改用与 SafetyCard 一致的 #C55B51（不是旧的
+ * safety-text token）——两处颜色本轮统一切换到新稿的独立配色。 */
 const BORDER_CLASS: Record<EvidenceSource["tone"], string> = {
   brand: "border-l-brand-primary",
-  safety: "border-l-safety-text",
+  safety: "border-l-[#C55B51]",
 };
 
 export interface SourceListProps {
@@ -39,8 +41,9 @@ export function SourceList({ sources, emptyText, messageId }: SourceListProps) {
                 type="button"
                 onClick={() => handleClick(index)}
                 disabled={!messageId}
-                className={`w-full text-left bg-content-bg border border-border-color p-3 hover:bg-brand-light-bg
-                           transition cursor-pointer border-l-2 disabled:cursor-default disabled:hover:bg-content-bg
+                className={`w-full text-left bg-white rounded-[12px] border border-[#E2E8F0] p-3 shadow-soft
+                           hover:shadow-md transition-shadow cursor-pointer border-l-[3px]
+                           disabled:cursor-default disabled:hover:shadow-soft
                            ${BORDER_CLASS[source.tone]}`}
               >
                 <div className="text-[13px] text-text-primary truncate">{source.title}</div>

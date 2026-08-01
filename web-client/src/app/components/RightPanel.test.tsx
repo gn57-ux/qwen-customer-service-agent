@@ -24,12 +24,11 @@ function doneBody(overrides: Partial<ChatResponseBody> = {}): ChatResponseBody {
 }
 
 describe("RightPanel", () => {
-  it("宽度 300px（xl 320px）、断点 min-[1100px]（AC-001，⛔ 不是 lg/1024）", () => {
+  it("固定宽度 320px（Stitch v2 起不再有 xl 前的 300px 中间态）、断点 min-[1100px]（AC-001，⛔ 不是 lg/1024）", () => {
     const { container } = render(<RightPanel />);
     const aside = container.querySelector("aside")!;
     expect(aside.className).toContain("min-[1100px]:flex");
-    expect(aside.className).toContain("w-[300px]");
-    expect(aside.className).toContain("xl:w-[320px]");
+    expect(aside.className).toContain("w-[320px]");
     expect(aside.className).not.toMatch(/\blg:/);
   });
 

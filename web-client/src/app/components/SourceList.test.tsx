@@ -30,7 +30,8 @@ describe("SourceList", () => {
 
     const buttons = container.querySelectorAll("button");
     expect(buttons[0]!.className).toContain("border-l-brand-primary");
-    expect(buttons[1]!.className).toContain("border-l-safety-text");
+    // Stitch v2 起高优先级左边框改用 #C55B51（与 SafetyCard 一致），不再是 safety-text token。
+    expect(buttons[1]!.className).toContain("border-l-[#C55B51]");
   });
 
   it("点击某一项会滚动定位到 messageId 对应的引用角标（Codex Review P2：解决之前只有视觉没有行为的问题）", () => {

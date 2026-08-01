@@ -60,7 +60,7 @@ describe("App", () => {
     expect(asides[0]!.className).toContain("md:flex");
     expect(asides[0]!.className).toContain("w-[220px]");
     expect(asides[1]!.className).toContain("min-[1100px]:flex");
-    expect(asides[1]!.className).toContain("w-[300px]");
+    expect(asides[1]!.className).toContain("w-[320px]");
   });
 });
 

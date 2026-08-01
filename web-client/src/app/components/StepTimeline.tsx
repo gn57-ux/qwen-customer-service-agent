@@ -43,7 +43,7 @@ export function StepTimeline({ steps, emptyText }: StepTimelineProps) {
       {steps.length === 0 ? (
         <p className="text-text-muted text-[13px]">{emptyText}</p>
       ) : (
-        <ul className="space-y-4 border-l border-border-color ml-2 pl-4">
+        <ul className="space-y-4 border-l border-border-color ml-2 pl-4 py-1">
           {withOccurrenceKeys(steps).map((step) => (
             <li key={step.key} className="relative">
               <span className={`absolute -left-[21px] top-1 w-2 h-2 block ${DOT_CLASS[step.tone]}`} />
