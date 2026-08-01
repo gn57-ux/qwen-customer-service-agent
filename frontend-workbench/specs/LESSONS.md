@@ -139,3 +139,9 @@
 **技术要点（可复用）**：
 - 验证响应式留白/居中效果时，用 `element.getBoundingClientRect()` 算出 `rect.left` 和 `window.innerWidth - rect.right`，两者应该相等（对称留白）且都应该是期望的像素值——比只读 `getComputedStyle(...).margin` 更可靠，因为后者只反映声明的值，不反映 flex/grid 布局系统实际计算出的几何结果。
 - 改 `tailwind.config.ts`/`vite.config.ts`/`postcss.config.js` 这类构建配置文件后，固定动作是"杀掉旧 dev server 进程 → 重新启动 → 再验证"，不要依赖 HMR 自动生效。
+
+## 2026-08-01 — Feature 9: stitch-v2-visual-restoration（任务 4）
+
+**"选中态"和"未选中态"共用一部分 className 字符串时，容易把只该属于其中一态的样式意外带到另一态上——这次是圆角，被 Codex Review 抓到：** 最初写法是 `` `w-full ... rounded-r-md ${active ? "选中态额外样式" : "未选中态额外样式"}` ``，把 `rounded-r-md`（新稿设计里只属于"选中态，因为左边框已经占了视觉重量，只需要圆右侧"）放进了两态共享的前缀部分，导致未选中态（新稿设计是四角都圆的 `rounded-md`）也被套上了"只圆右侧"的效果——只有在 hover 未选中项、或对比两种状态截图时才会看出来，光看选中态本身完全测不出这个问题。同一次修复还发现 `w-full` + `ml-[3px]`（给未选中项让出选中态左边框的视觉空间）会让未选中项实际宽度变成"容器宽度 + 3px"，在有 `overflow-y-auto` 的侧栏里造成隐藏的横向溢出（垂直滚动条掩盖了横向溢出的视觉线索，肉眼截图很难发现，需要专门去比较 `scrollWidth` 和 `clientWidth`）。
+
+**教训**：条件样式（`active ? A : B`）如果只是把"两态都要"的公共样式放进不带条件的前缀部分，"看起来只有这一态特有"的样式反而更容易被误放进公共前缀——判断一个 Tailwind class 该不该放共享前缀，标准应该是"两个分支的设计稿截图里这个视觉效果是否都存在"，而不是"这个 class 是不是两态都写了字面上一样的东西"（`rounded-r-md` 字面上没在另一分支出现，但因为在共享前缀里，它其实在运行时同样应用到了未选中态，只是没人细看）。涉及"给某一态的元素让出空间"的负 margin/margin 组合（如 `ml-[3px]` 补偿选中态的左边框宽度），必须同步用等量的宽度收缩（`w-[calc(100%-3px)]`）抵消，不能只加 margin 不减宽度——这类问题在有滚动容器包裹时尤其隐蔽，用 `element.scrollWidth === element.clientWidth` 做溢出检测比截图更可靠。
