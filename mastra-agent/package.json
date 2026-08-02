@@ -19,7 +19,17 @@
     "agent:test:unit": "node --experimental-test-module-mocks --env-file-if-exists=../.env --import tsx --test src/mastra/tools/query-order-tool.test.ts src/mastra/orchestration.test.ts src/mastra/orchestration.forced-tools.test.ts src/mastra/contract.test.ts src/mastra/contract-mirror.test.ts src/mastra/routes/customer-service.route-assembly.test.ts src/mastra/health/probes.test.ts src/mastra/routes/customer-service.status-route.test.ts",
     "agent:test:live": "node --env-file-if-exists=../.env --import tsx --test src/mastra/tools/search-knowledge-base-tool.test.ts src/mastra/agent.e2e.test.ts",
     "agent:test": "npm run agent:test:unit && npm run agent:test:live",
-    "test": "npm run typecheck && npm run agent:test:unit"
+    "experience:ingest": "node --env-file-if-exists=../.env --import tsx scripts/experience-ingest.ts",
+    "experience:rebuild": "npm run experience:ingest -- --rebuild",
+    "experience:search": "node --env-file-if-exists=../.env --import tsx scripts/experience-search.ts",
+    "experience:status": "node --env-file-if-exists=../.env --import tsx scripts/experience-status.ts",
+    "experience:audit": "node --env-file-if-exists=../.env --import tsx scripts/experience-audit.ts",
+    "experience:finalize": "node --env-file-if-exists=../.env --import tsx scripts/experience-finalize.ts",
+    "experience:write": "node --env-file-if-exists=../.env --import tsx scripts/experience-write.ts",
+    "experience:suggest-rules": "node --env-file-if-exists=../.env --import tsx scripts/experience-suggest-rules.ts",
+    "experience:test": "node --experimental-test-module-mocks --env-file-if-exists=../.env --import tsx --test src/experience/*.test.ts",
+    "experience:test:live": "node --experimental-test-module-mocks --env-file-if-exists=../.env --import tsx --test src/experience/live/*.test.ts",
+    "test": "npm run typecheck && npm run agent:test:unit && npm run experience:test"
   },
   "keywords": [],
   "author": "",

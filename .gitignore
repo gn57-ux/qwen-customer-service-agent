@@ -45,3 +45,7 @@ mastra-agent/.runtime/
 mastra-agent/.models/
 .models/
 codex-review/
+
+# claude 工作流经验库的写入锁/临时文件（进程内瞬时产物，不入库）
+knowledge/experience/**/*.lock
+knowledge/experience/**/*.tmp-*

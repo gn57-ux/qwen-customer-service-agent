@@ -5,6 +5,21 @@
 | 日期 | 版本 | 说明 |
 | ---- | ---- | ---- |
 | 2026-08-01 | v1 | 初始设计 |
+| 2026-08-01 | v1.17 | 第十七轮 Codex Review：`acquireLock()` 陈旧锁回收分支的 `continue` 从无条件改为 `if (reclaimed) continue`，修复 unlink 持续失败时忙等待、忽略 `timeoutMs` 的 bug |
+| 2026-08-01 | v1.18 | 第十八轮 Codex Review：归档写入改用 `fs.open(..., O_NOFOLLOW)` 而非 `fs.writeFile()`，修复归档文件路径本身（而非其父目录）是符号链接时会跟随写入 experienceRoot 之外的 bug |
+| 2026-08-01 | v1.19 | 第十九轮 Codex Review：内容级围栏检查改为比对 `{content_hash, occurrence_count}` 组合状态而非只比 `content_hash`，修复两次并发的相同内容提交（去重路径）无法被围栏检查识别、occurrence_count 增量被静默覆盖丢失的 bug |
+| 2026-08-01 | v1.20 | 第二十轮 Codex Review：`redact()` 新增带标注名称的密钥/密码赋值检测规则（`API_KEY=...`/`client_secret=...`/`password=...` 等），不依赖值本身熵，修复低熵标注凭据未被 blocked 的 bug |
+| 2026-08-01 | v1.21 | 第二十一轮 Codex Review：`atomicWriteExperience` 的 tmp 路径改用 `fs.open(..., O_EXCL\|O_NOFOLLOW)` 排他创建并追加 `randomUUID()`，修复可预测 tmp 路径被预置符号链接后 `fs.writeFile()` 跟随写入截断 experienceRoot 外部文件的 bug |
+| 2026-08-01 | v1.22 | 第二十二轮 Codex Review：新增 `readActiveFileNoFollow()` 并替换 write.ts 两处对 `{document_id}.md` 的直接 `fs.readFile()`，修复规范路径本身是符号链接时读取会跟随的 bug；`atomicWriteExperience` 补上失败清理 tmp 文件的 `try/catch`，修复孤儿 tmp 文件的 bug |
+| 2026-08-01 | v1.23 | 第二十三轮 Codex Review：`upsertExperience()` 在晚期围栏检查之后、rename 之前新增第三次 `assertStillHeld()`，修复所有权在此窗口被窃取时静默丢失更新的 bug；`acquireLock()` 心跳改为基于已打开的 `FileHandle` 调用 `handle.utimes()`，修复心跳按路径操作误刷新接班者新锁 mtime 的 bug |
+| 2026-08-01 | v1.24 | 第二十四轮 Codex Review：`tryCreateFresh()` 排他创建成功但写入 token 失败时补上关闭句柄+删除孤儿锁文件的清理逻辑，修复瞬时故障被放大成长时间阻塞且掩盖原始错误的 bug |
+| 2026-08-01 | v1.25 | 第二十五轮 Codex Review：内容实质变化的新版本 frontmatter 补上 `status: "candidate"`，修复沿用旧版本 verified/deprecated 状态绕过生命周期约束的 bug；`mastra-agent/package.json` 的默认 `test` 命令补上 `experience:test`，修复新测试套件被默认入口跳过的问题 |
+| 2026-08-01 | v1.26 | 第二十六轮 Codex Review：归档源读取之后、写入归档文件之前新增一次围栏状态核实（用刚读到的内容自算，不需要额外磁盘读取），修复早期围栏检查通过后、归档源真正读取前所有权被窃取可能污染历史归档的 bug |
+| 2026-08-01 | v1.27 | 第二十七轮 Codex Review：`validateExperience()` 新增 `hasTopLevelTitle()` 校验 F-002 要求的一级标题，修复只检查二级标题齐全、完全遗漏一级标题校验的 bug |
+| 2026-08-01 | v1.28 | 第二十八轮 Codex Review：`writeArchiveFile()` 改用 tmp+rename 原子写入（保留独立的符号链接显式拒绝检查，不直接复用 `atomicWriteExperience()`），修复 `O_TRUNC` 原地截断写入在崩溃/失败时可能销毁唯一旧版本归档的 bug |
+| 2026-08-01 | v1.29 | 第二十九轮 Codex Review：写入后读回校验改用 `readActiveFileNoFollow()`，修复它是本模块唯一仍用 `fs.readFile()` 读取活跃文件、可能跟随符号链接谎报 `ok: true` 的 bug |
+| 2026-08-01 | v1.30 | 第三十轮 Codex Review：正文先归一化（`trim()`）一次，哈希/校验/序列化统一复用同一份 `normalizedBody`，修复 `content_hash` 基于归一化前文本计算、与 `serializeExperienceFile()` 实际落盘内容不一致、导致空白差异误判为内容变化的 bug |
+| 2026-08-01 | v1.31 | 第三十一轮 Codex Review：`upsertExperience()` 在计算 `projectDir` 之前新增 `assertNotSymlink(candidate.experienceRoot)`，修复 `experienceRoot` 本身是符号链接时词法检查与 `projectDir` 的 lstat 都拦不住、写入实际落到配置根之外的 bug；**Feature 1 功能/安全范围自本轮起冻结（102/102 通过），后续仅接受可由 AC-001~AC-030 证明的缺陷修复** |
 
 ## 项目架构
 
@@ -67,9 +82,20 @@ export const REQUIRED_SECTIONS = [
 检索侧的职责，本 feature 只处理"精确同 ID"这一档）。
 
 校验函数 `validateExperience(frontmatter, body): ValidationResult`——检查
-14 个字段类型/枚举合法性 + 9 个必需二级标题是否存在，返回
-`{ ok: true }` 或 `{ ok: false, errors: string[] }`，不抛异常（调用方决定
-如何处理）。
+14 个字段类型/枚举合法性 + F-002 要求的一级标题（`# 标题`）+ 9 个必需
+二级标题是否存在，返回 `{ ok: true }` 或 `{ ok: false, errors: string[] }`，
+不抛异常（调用方决定如何处理）。
+
+**一级标题的校验必须显式存在，不能只靠二级标题齐全就判定通过**（第
+二十七轮 Codex Review 修复，AC-026）：旧实现只切分并检查了 9 个二级
+标题，完全没有校验 F-002 明确要求的 `# 标题` 本身是否存在——没有一级
+标题、或一级标题前有任意无关文字的正文都能通过校验并被持久化，违反
+文档化的 schema。修复：新增私有函数 `hasTopLevelTitle(body): boolean`，
+只检查正文的第一条非空行是否匹配 `/^#\s+\S/`（单个 `#` 后至少一个
+空白、再跟非空白标题文字）——`\s+` 紧跟在唯一的 `#` 之后天然排除了
+`##` 这类更深层标题（第二个 `#` 会让 `\s+` 匹配失败），不需要额外判断
+层级。校验的是"是否存在合法的一级标题"，不要求标题文字是字面的
+"标题"二字（测试夹具里的 `"# 标题"` 只是示例文本）。
 
 `validateExperience()` 内部必须先把正文按 9 个固定二级标题切分成
 `{ 节名 → 节正文 }` 的映射才能判断"是否缺节"，这一步单独导出为
@@ -81,6 +107,19 @@ Feature 2 的检索管线组装 `RetrievedLesson` 时同样需要从完整正文
 后续可能出现"标题匹配规则漂移"的不一致；缺失的节在返回的 Map 里
 直接不存在该 key，不返回空字符串，方便调用方区分"节存在但为空"与
 "节缺失"）。
+
+`serializeExperienceFile(frontmatter, body): string` 序列化 frontmatter
+时，字符串字段（`title`/`source` 等，candidate 可控）**必须做 YAML 标量
+转义/引用**，不能直接字符串拼接（第十二轮 Codex Review 指出的真实
+bug：`title` 含冒号、`#`、前导特殊字符或换行时，原样拼接会产出对标准
+YAML 消费者无效或被误解析的 frontmatter，例如 `title: Failure: retry
+handling` 里第二个冒号会被解析成新的 key）——命中以下任一条件就用双引号
+包裹并转义（`\`/`"`/换行）：空字符串、首尾有空白、含 `:`/`#`、含
+换行、以 YAML 特殊字符开头（`- ? : , [ ] { } & * ! | > ' " % @` 反引号）、
+是 `true`/`false`/`null`/`yes`/`no` 字面量、是纯数字。`parseExperienceFile`
+必须能反向解析双引号转义（含 `\\`/`\"`/`\n`/`\r`/`\t`），保证
+序列化→解析往返一致；数值字段（`document_version`/`occurrence_count`）
+不套用这套规则，原样输出数字字面量。
 
 ### 模块 2: 脱敏（`mastra-agent/src/experience/redact.ts`）
 
@@ -99,7 +138,29 @@ export function redact(text: string): RedactResult;
 - Token/Key/Cookie：常见模式（`sk-[A-Za-z0-9]{20,}`、`Bearer [A-Za-z0-9._-]+`、
   `AKIA[0-9A-Z]{16}` 等已知前缀 + 通用"看起来像密钥的高熵字符串"启发式）
   → 命中即 `blocked: true`，不允许写入含密钥的经验（密钥没有"脱敏后仍有
-  参考价值"的情况，直接拒绝比替换更安全）。
+  参考价值"的情况，直接拒绝比替换更安全）。**Cookie 单独补充规则**
+  （第十六轮 Codex Review 指出的真实漏洞：普通 Cookie 值如
+  `session_id=abc123` 往往是短小写字母数字串，不满足"高熵启发式"，
+  之前会被漏放，违反 F-004/AC-005 明确要求 Token/Key/Cookie 三类都
+  必须 blocked 的规定）：
+  - `Cookie:`/`Set-Cookie:` 请求/响应头（大小写不敏感）→ 命中即整行
+    `blocked: true`，不依赖值本身的熵。
+  - 不带头部前缀、但值本身是已知会话 cookie 名称（`session_id`/
+    `sessionid`/`PHPSESSID`/`JSESSIONID`/`connect.sid`/`auth_token`/
+    `csrf_token`/`xsrf_token` 等）的赋值形式 → 同样 `blocked: true`，
+    覆盖日志片段/代码示例里不带 `Cookie:` 前缀但仍是真实会话凭据的
+    情况。
+  - **第二十轮 Codex Review 补充**：带标注名称的密钥/密码赋值——
+    `API_KEY=abc123`/`client_secret=secret`/`password=hunter2` 这类值
+    本身很短、很像普通单词的场景，同样不满足通用高熵启发式，会被漏放。
+    命中已知凭据标签（`api_key`/`api_secret`/`secret_key`/
+    `client_secret`/`access_key`/`access_token`/`private_key`/
+    `auth_key`/`signing_key`/`encryption_key`/`password`/`passwd`/
+    `pwd`）+ `:`/`=` 赋值语法（标签后允许一个可选收尾引号，兼容
+    `{"api_key": "..."}` 这种 JSON 写法）→ 同样 `blocked: true`，不管
+    值本身长什么样。只收录明确是凭据语义的复合标签，不收录裸
+    "key"/"secret"/"token" 这类会在正常技术散文里大量出现的通用词
+    （避免"key 的类型定义在 schema.ts 里"这类正常描述被误判）。
 - 邮箱：`[\w.+-]+@[\w-]+\.[\w.-]+` → 替换为 `<email-redacted>`。
 - 私有/内网 IP：`10\.\d+\.\d+\.\d+`、`192\.168\.\d+\.\d+`、`172\.(1[6-9]|2\d|3[01])\.\d+\.\d+`
   → 替换为 `<internal-ip-redacted>`（`127.0.0.1`/`localhost` 不拦截——这是
@@ -136,6 +197,24 @@ export function redact(text: string): RedactResult;
   "内部/私有服务地址"这个语义，不是"任何域名"**，白名单需要显式维护
   一个"已知公共/文档合法域名"列表，避免把项目自己写的技术文档变得
   不可读）→ 命中且不在白名单 → 替换为 `<remote-host-redacted>`。
+  **实现阶段发现并收紧**：上述正则原样实现会把"schema.ts"/
+  "package.json"这类几乎出现在每篇技术经验里的文件名整体误判成远程
+  主机（两段式 `word.word` 结构与 FQDN 无法用正则本身区分），会让脱敏
+  后的经验文档不可读，违背脱敏的本来目的——收紧为：只有末段是已知
+  TLD（`com`/`net`/`org`/`io`/`dev`/`ai`/`co`/`app`/`cloud`/`info`/
+  `gov`/`edu`/`me`/`xyz`/`tech`/`cn`/`top`/`site`/`online`）或带子域名
+  （三段及以上，如 `api.internal.example.io`）才判定为主机；末段是常见
+  源码/文档扩展名（`ts`/`tsx`/`js`/`json`/`md`/`py`/`yml`/`css`/`html`/
+  `sh`/…）时直接放行。收紧方向仍是"宁可漏放明显是文件名的 case，不放宽
+  到误拦所有技术文档"，不违反 NFR 的"宁可误拦不可漏放"原则——那条原则
+  约束的是"真正疑似主机的字符串该不该拦"，不是"把所有 word.word 结构
+  都当成主机"。**第十二轮 Codex Review 追加发现**：三段及以上判定为
+  "带子域名的强 FQDN 信号"这条分支完全没检查标签内容，会把
+  "Node 22.1.0"这类随处可见的版本号、构建号整体误判成远程主机——补充
+  规则：所有标签都是纯数字（`^[0-9]+$`）时一律不算主机（真实主机名的
+  标签是字母数字混合，纯数字点分串是版本号/IP 的特征；公网 IP 地址本来
+  就不在本规则覆盖范围内，只有 `INTERNAL_IP_RE` 命中的内网/私有 IP
+  才需要脱敏，这条排除不会漏掉任何本该拦截的目标）。
 - 原始聊天内容片段：检测"连续 3 行以上，每行以已知对话角色前缀开头"
   （`^(User|Assistant|Human|AI|Claude|用户|助手)[:：]`，忽略行首空白）
   → **直接 `blocked: true`，不尝试脱敏后保留**——聊天记录的价值信息
@@ -150,11 +229,55 @@ export async function atomicWriteExperience(
   targetPath: string,
   content: string,
 ): Promise<void> {
-  const tmpPath = `${targetPath}.tmp-${process.pid}-${Date.now()}`;
-  await fs.writeFile(tmpPath, content, "utf-8");
-  await fs.rename(tmpPath, targetPath); // 同文件系统内 rename 是原子操作
+  const tmpPath = `${targetPath}.tmp-${process.pid}-${Date.now()}-${randomUUID()}`;
+  const handle = await fs.open(
+    tmpPath,
+    FS_CONSTANTS.O_WRONLY | FS_CONSTANTS.O_CREAT | FS_CONSTANTS.O_EXCL | FS_CONSTANTS.O_NOFOLLOW,
+  );
+  try {
+    try {
+      await handle.writeFile(content, "utf-8");
+    } finally {
+      await handle.close();
+    }
+    await fs.rename(tmpPath, targetPath); // 同文件系统内 rename 是原子操作
+  } catch (e) {
+    await fs.unlink(tmpPath).catch(() => {});
+    throw e;
+  }
 }
 ```
+
+**实现时独立成 `mastra-agent/src/experience/atomic-write.ts` 单文件**（`write.ts`
+从这里 re-export，对外接口不变）——`node:test` 的 `mock.module()` 只能
+拦截跨文件 import，AC-006 需要模拟"归档已完成、原子写入尚未执行前"
+这个具体时间点，必须让 `atomicWriteExperience` 是可被独立 mock 掉的
+外部依赖，不能是 `upsertExperience()` 同文件内的私有函数调用。
+
+**tmp 路径必须用 `O_CREAT|O_EXCL|O_NOFOLLOW` 排他创建，不能用
+`fs.writeFile()` 直写（第二十一轮 Codex Review 修复，AC-017）**——
+`${targetPath}.tmp-{pid}-{timestamp}` 这个路径在真正创建之前是可
+预测的，如果 experience 目录对本机其他进程可写，攻击者可以预先在
+这个确切路径放一个指向 `experienceRoot` 之外的符号链接；
+`fs.writeFile()` 默认跟随符号链接写入并截断链接指向的外部文件，
+绕开了 project/archive 路径已有的符号链接防护（AC-011/AC-014），
+是同一类攻击面在原子写入这最后一步的遗漏。`O_NOFOLLOW` 让 `open()`
+在目标是符号链接时以 `ELOOP` 失败；`O_EXCL` 确保该路径此刻确实
+不存在任何东西（符号链接或普通文件），排除"复用已存在普通文件"
+这另一种意外覆盖。文件名额外加 `randomUUID()` 段是纵深防御的第二层
+（降低被提前猜中的概率），不是唯一防线——真正的安全边界是
+`O_NOFOLLOW`/`O_EXCL` 这两个标志本身。`fs.rename(tmpPath, targetPath)`
+不需要同样的防护：POSIX `rename()` 语义是替换目标路径的目录项本身
+（若目标已是符号链接，链接本身被替换掉），不会跟随目标符号链接写穿
+到它指向的位置，这与 `open`/`writeFile` 跟随符号链接的行为不同。
+
+**tmp 文件创建成功后，写入/关闭句柄/`rename` 任一步失败都必须清理
+它（第二十二轮 Codex Review 修复，AC-019）**——磁盘耗尽、权限问题等
+瞬时故障会在每次失败重试后留下一份包含完整经验内容的孤儿 `.tmp-*`
+文件，此前这些路径一直被文档描述为"transient"，实际上从未被回收。
+用外层 `try/catch` 包住"写入+关闭+rename"整个序列，失败时 `unlink`
+清理 tmp 文件（`.catch()` 静默吞掉清理本身的失败，不能让它掩盖需要
+抛给调用方的原始错误），再重新抛出原始异常。
 
 并发锁：用 `proper-lockfile` 这类第三方库会引入新依赖，本项目倾向"能用
 标准库就不加依赖"（见 coding-style 的一贯风格）——改用 **基于
@@ -210,14 +333,33 @@ function newOwnerToken(): string {
   return `${process.pid}-${Date.now()}-${crypto.randomUUID()}`;
 }
 
-async function tryCreateFresh(lockPath: string, token: string): Promise<boolean> {
+// 返回打开的 FileHandle 而不是布尔值——心跳需要基于这个 fd 做
+// `handle.utimes()`，不能按路径（第二十三轮 Codex Review 修复，见下方
+// acquireLock() 里的用法说明）。
+async function tryCreateFresh(lockPath: string, token: string): Promise<FileHandle | null> {
+  let handle: FileHandle;
   try {
-    await fs.writeFile(lockPath, token, { flag: "wx" }); // 排他创建，内容即所有权凭证
-    return true;
+    handle = await fs.open(lockPath, O_WRONLY | O_CREAT | O_EXCL); // 排他创建，内容即所有权凭证
   } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === "EEXIST") return false;
+    if ((e as NodeJS.ErrnoException).code === "EEXIST") return null;
     throw e;
   }
+  try {
+    await handle.writeFile(token, "utf-8");
+  } catch (e) {
+    // 排他创建已经成功，但写入所有权凭证本身失败（磁盘耗尽/瞬时 I/O
+    // 错误等）——此时磁盘上已经留下一个空的 `.lock` 文件（第二十四轮
+    // Codex Review 指出的真实 bug，AC-022）：如果不清理，后续任何进程
+    // 都会把它当作"别人持有的活跃锁"，需要等满一整个 staleLockMs 才能
+    // 判定陈旧并回收，把一次瞬时故障放大成一次长时间阻塞，还掩盖了
+    // 真正的失败原因。必须关闭 fd 并删除这个刚创建、内容还是空的锁
+    // 文件，再把原始错误原样抛出——不能让清理动作本身掩盖需要让调用方
+    // 看到的错误。
+    await handle.close().catch(() => {});
+    await fs.unlink(lockPath).catch(() => {});
+    throw e;
+  }
+  return handle;
 }
 
 export interface LockHandle {
@@ -235,17 +377,37 @@ export interface LockHandle {
   release(): Promise<void>;
 }
 
-export async function acquireLock(lockPath: string, timeoutMs = 5000): Promise<LockHandle> {
+// STALE_LOCK_MS/HEARTBEAT_INTERVAL_MS 均可被 opts 参数或环境变量
+// （EXPERIENCE_LOCK_STALE_MS/EXPERIENCE_LOCK_HEARTBEAT_MS）覆盖——
+// AC-007d 需要用远小于 5 分钟的阈值加速测试，不必真的等待。
+export async function acquireLock(
+  lockPath: string,
+  timeoutMs = 5000,
+  opts: { staleLockMs?: number; heartbeatIntervalMs?: number } = {},
+): Promise<LockHandle> {
+  const staleLockMs = opts.staleLockMs ?? STALE_LOCK_MS;
+  const heartbeatIntervalMs = opts.heartbeatIntervalMs ?? HEARTBEAT_INTERVAL_MS;
   const myToken = newOwnerToken();
   const deadline = Date.now() + timeoutMs;
   while (true) {
-    if (await tryCreateFresh(lockPath, myToken)) {
-      // 心跳：只更新 mtime，不改变文件内容（token 不变），失败（如文件已
-      // 被判定陈旧并回收）忽略——release/assertStillHeld 会捕捉到真正的
-      // 所有权丢失，心跳定时器本身不需要对失败做任何特殊处理。
+    const handle = await tryCreateFresh(lockPath, myToken);
+    if (handle) {
+      // 心跳必须基于已经打开的 fd 用 `handle.utimes()`，不能按路径用
+      // `fs.utimes(lockPath, ...)`（第二十三轮 Codex Review 修复，
+      // AC-021）：如果本进程停顿过久（超过 staleLockMs 却没能发出下一
+      // 次心跳），另一进程会判定这把锁陈旧、`unlink` 掉、在同一路径
+      // 重新创建一把属于它自己的新锁；本进程恢复后，若心跳仍按路径
+      // 操作，会不加区分地刷新"此刻这个路径上无论是谁的锁"的
+      // mtime——把新 owner 的锁误刷新成"看起来很新鲜"，即使新 owner
+      // 随后真的崩溃，陈旧检测也会被这个僵尸心跳永久蒙蔽，探测不到。
+      // fd 天然没有这个问题：`unlink` 只是移除目录项，我们持有的 fd
+      // 仍然引用着原来那个（此刻已从目录中摘除的）inode，`handle.
+      // utimes()` 只会作用在这个"幽灵" inode 上，不会影响同一路径上
+      // 新创建的文件——不需要额外的"心跳前先校验归属"这类本身仍有
+      // TOCTOU 窗口的补丁，直接从机制上避免了这个问题。
       const heartbeat = setInterval(() => {
         const now = new Date();
-        fs.utimes(lockPath, now, now).catch(() => {});
+        handle.utimes(now, now).catch(() => {});
       }, HEARTBEAT_INTERVAL_MS);
       heartbeat.unref?.(); // Node 环境下不阻止进程退出
 
@@ -267,7 +429,10 @@ export async function acquireLock(lockPath: string, timeoutMs = 5000): Promise<L
           try {
             const current = await fs.readFile(lockPath, "utf-8");
             if (current === myToken) await fs.unlink(lockPath);
-          } catch { /* 已不存在 / 读取失败，视为无需再处理 */ }
+          } catch { /* 已不存在 / 读取失败，视为无需再处理 */
+          } finally {
+            await handle.close().catch(() => {});
+          }
         },
       };
     }
@@ -279,11 +444,43 @@ export async function acquireLock(lockPath: string, timeoutMs = 5000): Promise<L
     // 误删了 B 的合法锁、A 借机创建了新锁，B 在提交写入前调用
     // assertStillHeld() 会发现锁内容已经是 A 的 token，从而安全中止，
     // 不会产生"A、B 都完成写入"的数据损坏。
+    //
+    // **第十四轮 Codex Review 追加**：单纯"stat 一次就直接 unlink"会把
+    // "判定陈旧"到"真正删除"之间的任意时长窗口都暴露给竞态——unlink
+    // 无差别删除当前实际存在的文件，不管它是不是最初判定为陈旧的那份。
+    // 收紧为：紧贴在 unlink 之前再读一次内容+mtime，两次读到的结果完全
+    // 一致才真正回收；不一致说明这段时间内已经有其他进程回收并重新
+    // 持有了这把锁，本轮不动它，直接进入下一轮重试。这不是真正的原子
+    // CAS（两次 await 之间仍有极短间隙，POSIX 文件 API 做不到内容级
+    // compare-and-swap），只是把窗口从"任意时长"压缩到"两次背靠背系统
+    // 调用之间"。**真正防止"两个进程都完成写入"的保证不在这里**，而在
+    // 模块 4 `upsertExperience()` 落盘前的 content_hash 围栏检查——
+    // 该检查从数据本身而不是锁状态判断冲突，与锁的实现细节无关，覆盖了
+    // 锁机制任何残余竞态都可能引入的边界情况。
     try {
       const stat = await fs.stat(lockPath);
       if (Date.now() - stat.mtimeMs > STALE_LOCK_MS) {
-        await fs.unlink(lockPath).catch(() => {}); // 忽略"已被别的进程先删了"
-        continue; // 立即重新尝试 tryCreateFresh，不等待下一轮 sleep
+        const staleToken = await fs.readFile(lockPath, "utf-8").catch(() => null);
+        const recheck = await fs.stat(lockPath).catch(() => null);
+        const stillStale = recheck !== null && Date.now() - recheck.mtimeMs > STALE_LOCK_MS;
+        let reclaimed = false;
+        if (stillStale) {
+          const recheckToken = await fs.readFile(lockPath, "utf-8").catch(() => null);
+          if (recheckToken === staleToken) {
+            reclaimed = await fs.unlink(lockPath).then(() => true, () => false);
+          }
+        }
+        // **第十七轮 Codex Review 指出的真实 bug**：只有确认真的删掉了
+        // 陈旧锁，状态才发生了变化，值得立即重试创建。上一版在这里无
+        // 条件 `continue`——如果 unlink 持续失败（EACCES、只读文件系统、
+        // 或本轮 recheck 发现锁已不再陈旧/token 已变化），这个无条件
+        // `continue` 会跳过下面的超时检查（`if (Date.now() > deadline)`）
+        // 和 50ms 退避，整个循环退化成完全忽略 `timeoutMs` 的忙等待：
+        // 既不会超时报错，也会占满 CPU 空转。收紧为只有 `reclaimed`
+        // 为真才立即重试；未能回收时落到下面统一的超时检查/退避分支，
+        // 保证 `acquireLock()` 在任何情况下都会在 `timeoutMs` 内返回
+        // （成功或抛出"获取经验写入锁超时"），不会无限等待。
+        if (reclaimed) continue;
       }
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
@@ -320,12 +517,67 @@ export class LockLostError extends Error {}
 
 写入主流程（`upsertExperience(candidate): Promise<UpsertResult>`）：
 
-1. 脱敏（模块 2）→ `blocked` 则直接返回失败，不写入。
-2. 计算 `document_id`（模块 1 规则）与 `content_hash`（脱敏后正文的
-   `sha256`）。
+0. **校验 `project_scope` 是安全的单层路径片段**（不含 `/`、`\`、
+   空字符，不是裸 `.`/`..`）→ 不合法直接返回
+   `{ ok: false, reason: "invalid_project_scope" }`，不做任何文件系统
+   操作（第十三轮 Codex Review 指出的真实路径穿越漏洞：
+   `path.join(experienceRoot, projectScope)` 对 `"../../etc"` 这类值
+   不做任何限制，会在 `experienceRoot` 之外创建锁/归档/Markdown 文件）。
+   计算出目标目录后，**再用 `path.resolve` + `path.relative` 二次校验
+   结果确实落在 `experienceRoot` 内**作为兜底（防御纵深，不因为已有
+   步骤 0 的字符白名单校验就省略）。**第十四轮 Codex Review 追加**：
+   上述校验都是词法（lexical）路径比较，不会跟随符号链接——如果
+   `experienceRoot` 下已经存在一个名为 `projectScope` 的符号链接、
+   指向根目录之外，词法检查会误判为"在根目录内"，但后续锁/归档/
+   Markdown 写入会跟随符号链接真正落到根目录之外。用 `lstat`（不跟随
+   符号链接）显式检查该项目录条目：不存在 → 安全（后续 `mkdir` 会创建
+   一个我们自己拥有的真实目录）；存在且不是符号链接 → 安全；存在且是
+   符号链接 → 直接拒绝，不做任何后续文件系统操作。**第十六轮 Codex
+   Review 追加**：这个检查不能只做在 `projectDir` 这一层——`projectDir`
+   下固定名为 `.superseded` 的归档子目录同样是攻击面，如果它已经被
+   预先替换成指向根目录之外的符号链接，归档写入（步骤 6.1）会跟随
+   符号链接逃逸；必须在**每一个**即将写入的目录条目（`projectDir` 与
+   `.superseded` 目录）上都做这项 `lstat` 检查，不能只检查最外层。
+1. **脱敏不能只覆盖正文**——`title`/`source`/`project_scope` 同样是
+   candidate 可控的自由文本，必须分别过 `redact()`（模块 2）；任一个
+   `blocked` 都直接返回失败，不写入（第十三轮 Codex Review 指出的真实
+   漏洞：初版实现只脱敏了 `body`，`title`/`source` 里的邮箱/密钥会原样
+   落盘到 frontmatter，绕过了"写入前强制脱敏"这条安全要求）。后续步骤
+   使用的都是脱敏后的 `title`/`source`/`project_scope` 文本，不是
+   candidate 原始值。
+2. 计算 `document_id`（模块 1 规则，用脱敏后的 `title`/`project_scope`）
+   与 `content_hash`（脱敏后正文的 `sha256`）。**`content_hash` 必须
+   基于归一化之后的正文计算，不能直接对脱敏后但未归一化的
+   `redactedBody.text` 求哈希**（第三十轮 Codex Review 指出的真实
+   bug，AC-029）：本模块最终落盘时会调用 `serializeExperienceFile()`，
+   它对正文执行的是 `body.trim() + "\n"`；如果哈希是对归一化之前的
+   文本算出来的，两次语义完全相同、只是前导/尾随空白不同的提交会
+   序列化出字节完全一致的文件，却因为归一化前的原始文本不同而算出
+   不同的 `content_hash`——把本该走 F-005 去重路径（只
+   `occurrence_count += 1`）的重复提交误判成"内容变化"，凭空生成一个
+   不必要的新版本（还会触发一次不必要的归档）。修复：`normalizedBody
+   = redactedBody.text.trim()` 只算一次，之后计算 `content_hash`、
+   调用 `validateExperience()`、调用 `serializeExperienceFile()` 全部
+   使用这同一个 `normalizedBody`，不再各自独立引用 `redactedBody.text`
+   ——`serializeExperienceFile()` 对已经 trim 过的字符串再次
+   `.trim()` 是幂等操作，不会产生额外影响。
 3. 获取该 `document_id` 的写入锁（`acquireLock()` 返回 `LockHandle`）。
-4. 读取现存文件（若存在），在内存里算好本次要写入的最终内容
-   （`occurrence_count`/`document_version`/`supersedes` 等字段）：
+4. **读取现存文件（若存在）必须用 `readActiveFileNoFollow()`，不能
+   直接 `fs.readFile()`**（第二十二轮 Codex Review 指出的真实漏洞）：
+   规范路径 `{document_id}.md` 本身也是符号链接逃逸的攻击面——如果
+   它在读取之前已经存在且是符号链接、指向 `experienceRoot` 之外，
+   `fs.readFile()` 默认会跟随写入并读到外部文件内容，进而可能被当作
+   "现存版本"参与后续的去重/版本递增决策，甚至被归档进
+   `.superseded/`；project 目录（步骤 0）、`.superseded` 目录（第十六
+   轮）、`.superseded` 归档文件本身（第十八轮）、原子写入 tmp 路径
+   （第二十一轮）都已经有符号链接防护，唯独遗漏了这个每次更新都必然
+   会先读一次的入口。`readActiveFileNoFollow()`（定义于
+   `read-content-hash.ts`）用 `fs.open(path, O_RDONLY|O_NOFOLLOW)` 在
+   open 阶段本身拒绝跟随符号链接（`ELOOP`），不用"先 `lstat` 检查、
+   再 `readFile`"以避免 TOCTOU 窗口，与本模块其余读写路径的一贯做法
+   一致；路径不存在时返回 `null`（正常的"首次创建"场景），路径存在
+   且是符号链接时直接抛错，不静默跳过。在内存里算好本次要写入的最终
+   内容（`occurrence_count`/`document_version`/`supersedes` 等字段）：
    - `content_hash` 相同 → 只把 `occurrence_count += 1`、`updated_at` 刷新，
      **不改变 `document_version`**。
    - `content_hash` 不同 → `document_version += 1`，`supersedes` 字段
@@ -335,22 +587,170 @@ export class LockLostError extends Error {}
      所必需的设计），如果 `supersedes` 只存 `document_id`，新版本会
      指向"和自己相同"的 ID，构成自引用，一份经验被更新两次以上时
      完全无法区分"取代了哪一个具体版本"。`occurrence_count` 重置为 1
-     （新版本是"新的一次观察"）。**归档的具体落盘顺序见步骤 6**（不能
-     在这一步先把旧文件移走）。
+     （新版本是"新的一次观察"）。**`status` 必须重置为 `"candidate"`，
+     不得沿用旧版本的 `verified`/`deprecated`**（第二十五轮 Codex
+     Review 修复，AC-023）：`status` 表达的是"这份具体内容有没有经过
+     审核"，如果实现里用 `{...existing, ...}` 展开旧 frontmatter，会
+     把上一版的审核结论原样带到新内容上——旧版本被验证过不代表新内容
+     也经过了同样的审核（绕过 candidate→verified 必须走
+     `canVerify()` 的生命周期约束），旧版本被标记 `deprecated` 也不该
+     让全新的内容永久带着这个标记、再也无法被正常验证；新版本必须
+     重新从 `candidate` 起步，独立走一遍生命周期。**归档的具体落盘
+     顺序见步骤 6**（不能在这一步先把旧文件移走）。
    - 文件不存在 → 新建，`document_version=1`、`occurrence_count=1`、
      `status="candidate"`。
-5. **`await lock.assertStillHeld()`**——真正落盘之前的最后一道校验，
-   见模块 3 的锁设计说明；抛出 `LockLostError` 时不写入任何文件（含
+4.5. 记录基线围栏状态 `baselineFence = existing ? { contentHash:
+   existing.content_hash, occurrenceCount: existing.occurrence_count }
+   : null`——这是本次更新决策（去重/版本递增）所依据的磁盘状态快照，
+   供步骤 6.5 的内容级围栏检查比对用。**第十九轮 Codex Review 指出的
+   真实 bug**：早期实现只记录 `content_hash`（`baselineHash`），漏了
+   `occurrence_count`——两次并发的**相同内容**提交都会走去重路径
+   （`existing.content_hash === contentHash`），都只把
+   `occurrence_count` 从同一个基线值各自独立 +1，`content_hash`
+   本身从头到尾不变；如果锁机制的残余竞态窗口（见模块 3 说明）恰好让
+   两者都通过了获取锁阶段，只比 `content_hash` 的围栏检查会对这种
+   "内容相同、只有计数字段变化"的并发写入完全失明，其中一次的
+   `occurrence_count` 增量会被另一次无声覆盖丢失，而两次都报告
+   `ok: true`。加入 `occurrence_count` 后，任何一次真正成功的写入
+   （无论是否改变内容）都会让基线状态失配，围栏检查才能覆盖全部会
+   触发 frontmatter 变化的并发写入路径，不只是"内容变化"这一种。
+5. **`await lock.assertStillHeld()`**——落盘之前的第一道校验，见模块 3
+   的锁设计说明；抛出 `LockLostError` 时不写入任何文件（含
    `.superseded/` 归档也不执行），整个 `upsertExperience()` 直接失败，
    调用方可自行决定是否重新调用整个函数重试。
+5.5. **第一次内容级乐观并发围栏检查**（第十四轮 Codex Review 引入，
+   独立于锁 token 比对的第二道防线；**必须在任何文件系统写入/归档
+   之前执行**——第十五轮 Codex Review 指出的真实 bug：上一版把这次
+   检查放在归档之后，若冲突恰好在这里被发现，函数已经在
+   `.superseded/` 下留了一份文件才返回 `conflict`，违反"冲突时不写入
+   任何文件"的承诺，还可能把竞争对手的内容错误归档到我们计算出的旧
+   版本号下）：重新读取目标文件此刻的围栏状态（`content_hash` **加上**
+   `occurrence_count`，第十九轮 Codex Review 追加，不存在则为
+   `null`），与步骤 4.5 记录的 `baselineFence` 比较——不一致（任一
+   字段不同，见下方 `fenceStatesEqual()`）→ 说明这段时间内已经有人
+   成功提交了别的更新，返回 `{ ok: false, reason: "conflict" }`，
+   不做任何写入；一致 → 继续。
 6. 校验通过 → **按"先归档、后覆盖"的顺序落盘，不能反过来**：
-   1. **复制**（不是移动/rename）当前 `{document_id}.md` 的现有内容
+   1. **先对 `.superseded` 目录本身做符号链接检查**（步骤 0 已说明的
+      同一个 `lstat` 检查函数，第十六轮 Codex Review 追加），通过后
+      **复制**（不是移动/rename）当前 `{document_id}.md` 的现有内容
       到 `.superseded/{document_id}@v{旧版本号}.md`（若本次是"新建"
-      分支则跳过这一步，没有旧内容可归档）。
-   2. `atomicWriteExperience()` 把新内容原子写入（tmp + rename）到
+      分支则跳过这一步，没有旧内容可归档）。**第十八轮 Codex Review
+      追加**：目录本身不是符号链接不代表**归档文件这个具体路径**也
+      干净——攻击者可以预先在 `.superseded/{document_id}@v{旧版本号}.md`
+      这个确切路径放一个文件级符号链接指向 `experienceRoot` 之外，
+      `fs.writeFile()` 默认会跟随文件级符号链接写入，绕开了对目录的
+      检查（第十六轮只堵了目录这一层，遗漏了目录*里*具体文件路径这一
+      层）。第十八轮的修复是归档写入改用 `fs.open(path,
+      O_WRONLY|O_CREAT|O_TRUNC|O_NOFOLLOW)` 而不是 `fs.writeFile()`。
+      **第二十八轮 Codex Review 进一步指出：这个 `O_TRUNC` 原地截断
+      写入不是原子操作**——进程崩溃或 `handle.writeFile()` 失败会让
+      归档文件残留为空文件或半截内容，可能销毁这个 feature 本该保留
+      的唯一旧版本，违反 F-006"崩溃不得留下半截 Markdown"的要求（AC-
+      027）。修复：改为 tmp + rename 的原子写入模式（与
+      `atomicWriteExperience()` 同构），但**不能直接复用
+      `atomicWriteExperience()`**——`fs.rename()` 替换目标目录项本身
+      不跟随符号链接虽然不会写穿到外部文件，但会把符号链接*本身*静默
+      替换成归档文件，违反 AC-014"符号链接本身不得被移除或替换"这条
+      明确要求。修复后的具体流程：
+      1. 写入前先显式 `lstat` 目标路径，是符号链接就直接拒绝（不做
+         任何后续操作，符号链接原样保留）。
+      2. 写入一个用 `O_EXCL|O_NOFOLLOW` 排他创建的 tmp 文件（tmp 路径
+         同样是符号链接逃逸的攻击面，需要与 `atomic-write.ts` 相同的
+         防护）。
+      3. **紧贴在 `rename` 之前再核实一次目标不是符号链接**——第一次
+         检查到这里之间仍有窗口（纯 POSIX 无法把这个窗口彻底消灭到
+         零，与本文件其余同类检查是一致的理论边界），但能把窗口压缩
+         到"一次系统调用到下一次系统调用之间"。
+      4. `rename(tmpPath, targetPath)`；写入/rename 任一步失败都清理
+         tmp 文件，不掩盖原始错误。
+      不加 `O_EXCL` 的旧约束（"合法的崩溃后重试场景下同一路径可能已经
+      是上一次尝试遗留的普通文件，此时应该允许覆盖"）在新方案里依然
+      成立——`O_EXCL` 只作用于 tmp 路径（永远是新建），最终的
+      `rename` 本身天然允许覆盖已存在的普通文件，不需要额外处理。
+      **归档源本身的读取
+      同样必须用 `readActiveFileNoFollow()`**（第二十二轮 Codex
+      Review 追加）：从步骤 4 的初次读取到这里之间，`{document_id}.md`
+      理论上仍可能被替换成符号链接，不能假设入口处检查一次就够，与
+      本模块"能用一次系统调用堵住就不留检查-写入两步窗口"的一贯原则
+      一致。**归档源读取之后、写入归档文件之前必须再核实一次内容仍是
+      基线版本**（第二十六轮 Codex Review 修复，AC-025）：早期围栏
+      检查（步骤 5.5）通过之后、这里真正读到内容之前，如果另一个
+      写入者恰好完成了自己完整的一轮更新（读到旧内容→写入新内容→
+      rename），这里读到的 `oldRaw` 已经是对方刚写入的新版本；若不
+      核实就直接写进按本进程自己（此刻已陈旧）的 `archiveOldVersion`
+      算出的归档路径，会把错误版本的内容永久写进历史归档——即使下面
+      步骤 6.3 的第二次围栏检查随后发现冲突并让整个 `upsertExperience()`
+      报告 `conflict`，归档文件此刻已经被污染，无法撤销，这是"报告
+      冲突就等于没有产生副作用"这条隐含假设被打破的一个具体反例。
+      修复：用刚读到的 `oldRaw` 自己解析出一份围栏状态（不需要额外
+      一次磁盘读取），与步骤 4.5 记录的 `baselineFence` 用
+      `fenceStatesEqual()` 比较，不一致就必须在调用 `writeArchiveFile()`
+      之前直接返回 `{ ok: false, reason: "conflict" }`。
+   2. **再次 `await lock.assertStillHeld()`**——紧贴在
+      `atomicWriteExperience()` 之前，不能省略（Codex Review 第十二轮
+      指出的真实 bug：归档这一步本身有真实 I/O 耗时，如果所有权恰好在
+      "步骤 5.5 通过"之后、"归档完成"之前这段窗口内丢失——心跳错过
+      节拍、被误判陈旧并抢占——之前的校验并不会重新触发，进程会继续
+      执行到 `atomicWriteExperience()`，静默覆盖掉抢占者已经提交的
+      更新，这正是"最终只会有一个进程真正完成写入"这条保证本该阻止的
+      场景。保证"落盘前重新校验所有权"必须紧贴在真正的 rename 之前，
+      不能只在耗时步骤开始前校验一次就假定期间不会丢失所有权）。
+   3. **第二次内容级围栏检查**：与步骤 5.5 相同的比对，捕获归档这段
+      I/O 耗时期间新出现的冲突——不一致同样返回
+      `{ ok: false, reason: "conflict" }`（这一步之前已经产生了
+      `.superseded/` 归档文件，属于"归档白做了"的可接受代价，见下方
+      归档顺序说明，不违反"不覆盖规范文件"的核心承诺）。
+   3.5. **第三次 `await lock.assertStillHeld()`——紧贴在
+      `atomicWriteExperience()` 之前，中间不再夹任何其他 I/O**（第
+      二十三轮 Codex Review 修复，AC-020）：步骤 2 的所有权校验与
+      步骤 4 的 rename 之间仍隔着步骤 3 这次围栏检查的真实 I/O——如果
+      所有权恰好在这段窗口内被另一进程回收并重新持有，而围栏状态本身
+      没有变化（只是锁的归属变了，内容级围栏检查天生看不出这一点），
+      旧实现会在没有再次核实所有权的情况下直接 rename：两个进程可能
+      各自对着自己刚写入的内容做步骤 5 的读回校验并都验证成功、都报告
+      `ok: true`，其中一次的更新被静默覆盖丢失——这是步骤 5 的读回
+      校验本身无法覆盖的镜像情形（它只能发现"自己写完之后又被别人
+      覆盖"，无法发现"自己的 rename 覆盖了别人已经报告成功的写入"）。
+      把所有权校验挪到紧邻 rename 之前，让"最后一次所有权校验"和
+      "真正落盘"之间不再夹着任何额外 I/O，把窗口从"一次围栏检查的
+      I/O 耗时"压缩到"一次 Promise resolve 到下一次 await 之间"这个
+      量级——纯 POSIX 文件 API 无法把这个窗口彻底消灭到零（与模块
+      顶部锁获取阶段、步骤 5 读回校验说明的是同一类"没有外部协调
+      服务就无法从数学上完全消除"的理论边界），但这是目前能做到的
+      最强保证。
+   4. `atomicWriteExperience()` 把新内容原子写入（tmp + rename）到
       规范路径 `{document_id}.md`，覆盖旧内容。
+   5. **写入后读回校验**（第十五轮 Codex Review 引入）：立即重新读取
+      刚写入的 `{document_id}.md`，确认 `document_version`/
+      `occurrence_count`/`content_hash` 确实是本次写入的那份——不一致
+      说明有人紧跟着我们的 rename 之后又完成了一次覆盖，返回
+      `{ ok: false, reason: "conflict" }`（不再谎称 `ok: true`）。**如实
+      说明这一步的理论边界**：这不能撤销已经发生的写入，纯 POSIX 文件
+      API 也无法让"围栏检查→rename"两步本身做到完全无竞态的原子操作
+      ——第十四、十五轮 Codex Review 反复指出的这类窗口与模块 3 顶部
+      锁获取阶段的理论边界是同一类问题，没有外部协调服务（数据库事务/
+      分布式锁）无法从数学上完全消除；这一步提供的保证是"不会有调用方
+      在更新被覆盖后仍然收到成功假象"，而不是"物理上不可能发生竞争
+      写入"——真正生效的那一方会在自己的读回校验里看到自己的内容，
+      从而正确报告成功，收敛到"最多一方声称成功，其余如实报告冲突并
+      可重试"。**这一步的读取必须用 `readActiveFileNoFollow()`，不能
+      用会跟随符号链接的 `fs.readFile()`**（第二十九轮 Codex Review
+      指出的真实 bug，AC-028）：`atomicWriteExperience()` 的 rename
+      完成、函数返回之后，到这里真正执行读回之前，如果另一个本机进程
+      恰好把规范路径替换成指向一份"版本/计数/哈希都精心构造成匹配"的
+      外部文件的符号链接，会跟随符号链接的读取会误判"确实生效"并谎报
+      `ok: true`，同时读到了 `experienceRoot` 之外的数据——本模块步骤
+      4 的初次存在性判断、步骤 6.1 的归档源读取、`readCurrentFenceState`
+      内部都已经统一使用这个不跟随符号链接的安全读取，读回校验这最后
+      一步此前遗漏了。旧实现用 `.catch(() => null)` 把所有错误（含
+      符号链接导致的 `ELOOP`）都吞成"未生效"→`conflict`，看起来"安全
+      降级"，实际上掩盖了这个本该向调用方明确报警的异常情形；
+      `readActiveFileNoFollow()` 只把"文件不存在"这一个确定状态映射
+      为 `null`，符号链接会像本模块别处一样直接抛出描述性错误，不
+      静默吞掉。
 
-   **Codex Review 指出的真实 bug**：上一版顺序是"先把旧文件移到
+   **归档顺序本身的 Codex Review 记录**：上一版顺序是"先把旧文件移到
    `.superseded/`，再原子写入新版本"——如果进程在"移走旧文件"之后、
    "新版本原子写入完成"之前被 kill，规范路径 `{document_id}.md` 会
    完全消失（不是半截文件，是文件本身不存在），违反 AC-006（不应
