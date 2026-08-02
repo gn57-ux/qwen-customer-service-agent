@@ -4,8 +4,32 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "mastra dev"
+    "dev": "mastra dev",
+    "typecheck": "tsc --noEmit",
+    "rag:qdrant:up": "bash scripts/qdrant-up.sh",
+    "rag:qdrant:down": "bash scripts/qdrant-down.sh",
+    "rerank:up": "bash scripts/rerank-up.sh",
+    "rerank:down": "bash scripts/rerank-down.sh",
+    "rerank:status": "bash scripts/rerank-status.sh",
+    "rerank:selftest": "bash scripts/rerank-up.selftest.sh",
+    "rag:ingest": "node --env-file-if-exists=../.env --import tsx src/rag/ingest.ts",
+    "rag:search": "node --env-file-if-exists=../.env --import tsx src/rag/search.ts",
+    "rag:test": "node --env-file-if-exists=../.env --import tsx --test src/rag/rag.test.ts",
+    "rerank:test": "node --env-file-if-exists=../.env --import tsx --test src/rag/rerank.test.ts",
+    "agent:test:unit": "node --experimental-test-module-mocks --env-file-if-exists=../.env --import tsx --test src/mastra/tools/query-order-tool.test.ts src/mastra/orchestration.test.ts src/mastra/orchestration.forced-tools.test.ts src/mastra/contract.test.ts src/mastra/contract-mirror.test.ts src/mastra/routes/customer-service.route-assembly.test.ts src/mastra/health/probes.test.ts src/mastra/routes/customer-service.status-route.test.ts",
+    "agent:test:live": "node --env-file-if-exists=../.env --import tsx --test src/mastra/tools/search-knowledge-base-tool.test.ts src/mastra/agent.e2e.test.ts",
+    "agent:test": "npm run agent:test:unit && npm run agent:test:live",
+    "experience:ingest": "node --env-file-if-exists=../.env --import tsx scripts/experience-ingest.ts",
+    "experience:rebuild": "npm run experience:ingest -- --rebuild",
+    "experience:search": "node --env-file-if-exists=../.env --import tsx scripts/experience-search.ts",
+    "experience:status": "node --env-file-if-exists=../.env --import tsx scripts/experience-status.ts",
+    "experience:audit": "node --env-file-if-exists=../.env --import tsx scripts/experience-audit.ts",
+    "experience:finalize": "node --env-file-if-exists=../.env --import tsx scripts/experience-finalize.ts",
+    "experience:write": "node --env-file-if-exists=../.env --import tsx scripts/experience-write.ts",
+    "experience:suggest-rules": "node --env-file-if-exists=../.env --import tsx scripts/experience-suggest-rules.ts",
+    "experience:test": "node --experimental-test-module-mocks --env-file-if-exists=../.env --import tsx --test src/experience/*.test.ts",
+    "experience:test:live": "node --experimental-test-module-mocks --env-file-if-exists=../.env --import tsx --test src/experience/live/*.test.ts",
+    "test": "npm run typecheck && npm run agent:test:unit && npm run experience:test"
   },
   "keywords": [],
   "author": "",
@@ -16,11 +40,16 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.19",
+    "@mastra/client-js": "1.33.0",
     "@mastra/core": "^1.52.1",
+    "@mastra/qdrant": "^1.1.2",
+    "@mastra/rag": "^2.4.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/node": "^26.1.2",
     "mastra": "^1.20.1",
+    "tsx": "^4.23.1",
     "typescript": "^7.0.2"
   }
 }

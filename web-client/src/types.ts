@@ -1,0 +1,88 @@
+/**
+ * 与 mastra-agent/src/mastra/contract.ts 保持一致的类型镜像。
+ * web-client 是独立的最小包（不依赖 mastra-agent 的编译单元），这里手动
+ * 复制字段定义；改动服务端契约时必须同步改这里，两边字段名/可选性必须一致。
+ */
+
+export type RouteCategory = "safety" | "order" | "repair" | "general";
+
+export interface ToolCallRecord {
+  name: string;
+  arguments: Record<string, unknown>;
+  result: unknown;
+}
+
+export interface KnowledgeSourceItem {
+  title: string;
+  section: string;
+  sourceFile: string;
+  documentVersion: string;
+  vectorScore: number;
+  rerankScore: number | null;
+}
+
+export interface OrderDetails {
+  orderId: string | null;
+  status: string | null;
+  statusText: string | null;
+  createdAt: string | null;
+  carrier: string | null;
+  trackingNumber: string | null;
+  latestLogistics: string | null;
+  estimatedDelivery: string | null;
+  canCancel: boolean | null;
+  customerTip: string | null;
+}
+
+export interface OrderStatus {
+  found: boolean;
+  partial?: boolean;
+  missingFields?: string[];
+  error?: "not_found" | "timeout" | "server_error" | "network_error";
+  details?: OrderDetails;
+}
+
+export interface ChatResponseBody {
+  reply: string;
+  route: RouteCategory;
+  toolCalls: ToolCallRecord[];
+  /** 只有调用过 searchKnowledgeBase 时才有值 */
+  sources?: KnowledgeSourceItem[];
+  reranked?: boolean;
+  degraded?: boolean;
+  degradedReason?: string;
+  /** 只有调用过 queryOrderTool 时才有值（多次调用取最后一次） */
+  order?: OrderStatus;
+  /** 向量检索实际命中数；未调用 searchKnowledgeBase 时为 0 */
+  retrievedCount: number;
+  /** 最终返回条数；未调用 searchKnowledgeBase 时为 0 */
+  returnedCount: number;
+  traceId: string;
+  latencyMs: number;
+}
+
+/**
+ * GET /customer-service/status 的响应契约。四态枚举，`unknown` 只由**客户端**
+ * 在探测尚未完成时使用——服务端探测完成后必有确定结论，不会返回 `unknown`。
+ */
+export type ServiceState = "unknown" | "online" | "degraded" | "error";
+
+export interface ServiceStatusBody {
+  localModel: ServiceState;
+  /** 聚合 Qdrant + Embedding + Reranker */
+  knowledgeBase: ServiceState;
+  orderService: ServiceState;
+}
+
+export interface ChatHistoryTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+/** /customer-service/stream 的 SSE 事件（event 字段决定 data 的形状）。*/
+export type StreamEvent =
+  | { event: "meta"; data: { traceId: string } }
+  | { event: "tool-result"; data: ToolCallRecord }
+  | { event: "text-delta"; data: { delta: string } }
+  | { event: "done"; data: ChatResponseBody }
+  | { event: "error"; data: { message: string; traceId: string } };

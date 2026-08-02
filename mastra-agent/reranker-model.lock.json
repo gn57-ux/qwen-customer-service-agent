@@ -1,0 +1,64 @@
+{
+  "purpose": "本地 Reranker 模型与运行时的固化元数据。权重本身不入库（mastra-agent/.models/ 已 gitignore），这里记录足以精确复现的信息。",
+  "stage": "rag-reranker",
+  "recordedAt": "2026-07-30",
+  "baseModel": {
+    "repo": "BAAI/bge-reranker-v2-m3",
+    "url": "https://huggingface.co/BAAI/bge-reranker-v2-m3",
+    "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+    "revisionSource": "https://huggingface.co/api/models/BAAI/bge-reranker-v2-m3 的 sha 字段（实际读取，非推测）",
+    "license": "Apache-2.0",
+    "params": "0.6B",
+    "family": "bge-m3（XLM-RoBERTa-large）",
+    "type": "cross-encoder",
+    "note": "query 与 document 拼成一条序列走同一次前向，直接输出相关性分数，不产生 embedding。"
+  },
+  "gguf": {
+    "repo": "gpustack/bge-reranker-v2-m3-GGUF",
+    "url": "https://huggingface.co/gpustack/bge-reranker-v2-m3-GGUF",
+    "revision": "3093af03b1a635e67b084b1d8c03c5f5e020fd05",
+    "license": "apache-2.0",
+    "file": "bge-reranker-v2-m3-Q8_0.gguf",
+    "quantization": "Q8_0",
+    "sizeBytes": 635676416,
+    "sha256": "a43c7c9b11a4c1517e5bf95151960e1621d1b72f7a493364b01e386cf1aaa1d3",
+    "localPath": "mastra-agent/.models/bge-reranker-v2-m3-Q8_0.gguf",
+    "downloadUrl": "https://huggingface.co/gpustack/bge-reranker-v2-m3-GGUF/resolve/3093af03b1a635e67b084b1d8c03c5f5e020fd05/bge-reranker-v2-m3-Q8_0.gguf"
+  },
+  "runtime": {
+    "engine": "llama.cpp (llama-server)",
+    "installedVia": "homebrew",
+    "brewVersion": "10180",
+    "serverVersion": "version: 10180 (11b068d06)",
+    "builtWith": "AppleClang 21.0.0.21000101 for Darwin arm64",
+    "acceleration": "Apple Metal",
+    "verifiedFlags": {
+      "note": "以本机 llama-server --help 实测为准，未硬编码文档参数。",
+      "--rerank, --reranking": "enable reranking endpoint on server (default: disabled) (env: LLAMA_ARG_RERANKING)",
+      "--embedding, --embeddings": "restrict to only support embedding use case",
+      "--pooling": "{none,mean,cls,last,rank} pooling type for embeddings"
+    },
+    "launchArgs": [
+      "--model",
+      "mastra-agent/.models/bge-reranker-v2-m3-Q8_0.gguf",
+      "--reranking",
+      "--embedding",
+      "--pooling",
+      "rank",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "8787"
+    ],
+    "endpoint": "http://127.0.0.1:8787/v1/rerank",
+    "bindNote": "只监听 127.0.0.1，不对外暴露。"
+  },
+  "verification": {
+    "sizeMatched": true,
+    "ggufMagic": "GGUF",
+    "howToVerify": [
+      "shasum -a 256 mastra-agent/.models/bge-reranker-v2-m3-Q8_0.gguf",
+      "对比本文件的 gguf.sha256"
+    ]
+  }
+}

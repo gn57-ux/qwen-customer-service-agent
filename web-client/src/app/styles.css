@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Stitch v2 视觉还原（frontend-workbench/docs/assets/stitch-v2/
+   workbench-stitch-v2.html）逐字迁移的自定义 class——这三个不是
+   tailwind.config 的 boxShadow/背景 token，是新稿内联 <style> 里
+   直接写的具名 class，照抄以保持与设计稿逐字节一致。
+   ⛔ 不再全局强制 0 圆角（旧版决策，已被用户明确推翻）——组件层的
+   rounded-* 现在按 tailwind.config.ts 的 borderRadius token 或任意值
+   正常生效，改动前查 frontend-workbench/specs/9.stitch-v2-visual-
+   restoration/design.md 的逐组件圆角数值，不要凭直觉改写。 */
+.bg-gradient-page {
+  background: linear-gradient(135deg, #f5f8fc 0%, #edf2f7 100%);
+}
+.glow-blue {
+  box-shadow: 0 0 12px rgba(79, 111, 143, 0.4);
+}
+.glow-green {
+  box-shadow: 0 0 8px rgba(63, 124, 95, 0.6);
+}
+/* 主容器需要同时呈现 shadow-main（外部投影）与 shadow-inner-top（顶部
+   内部高光）——新稿 HTML 原样写的是 `class="... shadow-main
+   shadow-inner-top"` 两个 Tailwind box-shadow 工具类，但 box-shadow
+   是单值 CSS 属性，两个 shadow-* 类共享同一个 --tw-shadow 变量，只有
+   样式表里排在后面的那个生效，不会像看上去那样叠加。按"浏览器最终
+   像素"验收标准手动合并成一个组合值，保证两种效果都真实生效。 */
+.shadow-main-with-inner {
+  box-shadow:
+    0 24px 60px rgba(36, 54, 78, 0.14),
+    0 4px 16px rgba(36, 54, 78, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 任务 1：字体与图标加载修复——document.fonts.ready resolve 前，
+   material-symbols-outlined 图标一律透明，避免 fallback 字体把图标名称
+   （arrow_upward/delete 等）当作可见文字闪现；useIconFontReady() 在
+   ready 后给 <html> 加 icons-ready class。 */
+.material-symbols-outlined {
+  opacity: 0;
+}
+html.icons-ready .material-symbols-outlined {
+  opacity: 1;
+}

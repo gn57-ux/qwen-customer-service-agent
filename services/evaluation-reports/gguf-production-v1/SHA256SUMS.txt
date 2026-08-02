@@ -1,0 +1,3 @@
+40d69179a8007ad2c4bd4f5d1a3ac86f66a88ed66c761301da89bee3a39d7007  summary.json
+d2664209343b649daa7fe32c32af29115bb1eb8ba3bd020287cccdb60666596f  summary.md
+2241de5eb8bad9a252a72ba4bf6f284a46dae3734eabaa357322d7bef45bdfb6  manual-adjudication.md

@@ -1,0 +1,39 @@
+{
+  "name": "customer-service-client",
+  "version": "1.0.0",
+  "description": "React/Vite 前端共享的最小 Mastra 客服客户端：只通过 @mastra/client-js 调用 Mastra 服务的 customer-service/chat、customer-service/stream 两个自定义 route，不直连 FastAPI 或 llama-server，不自行实现路由。",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "smoke": "node --import tsx scripts/smoke.ts",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "gate:no-direct": "bash scripts/gate-no-direct.sh",
+    "gate:no-hardcoded-count": "bash scripts/gate-no-hardcoded-count.sh",
+    "gate:assets": "bash scripts/gate-assets.sh",
+    "gates": "npm run typecheck && npm run build && npm run test && npm run gate:no-direct && npm run gate:no-hardcoded-count && npm run gate:assets"
+  },
+  "dependencies": {
+    "@mastra/client-js": "1.33.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^26.1.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "autoprefixer": "^10.5.4",
+    "jsdom": "^30.0.1",
+    "postcss": "^8.5.25",
+    "tailwindcss": "^3.4.19",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.0",
+    "vitest": "^4.1.10"
+  }
+}

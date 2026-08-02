@@ -1,0 +1,130 @@
+{
+  "dataset_version": "customer-service-2026-07-v1",
+  "created_at": "2026-07-29T00:00:00+08:00",
+  "total_count": 800,
+  "split_count": {
+    "train": 640,
+    "validation": 80,
+    "test": 80
+  },
+  "category_count": {
+    "refrigerator": 160,
+    "television": 120,
+    "monitor": 120,
+    "order_logistics": 100,
+    "return_refund": 100,
+    "warranty_service": 80,
+    "complaint_escalation": 50,
+    "safety_refusal": 40,
+    "injection_degradation": 30
+  },
+  "category_count_by_split": {
+    "train": {
+      "refrigerator": 128,
+      "television": 96,
+      "monitor": 96,
+      "order_logistics": 80,
+      "return_refund": 80,
+      "warranty_service": 64,
+      "complaint_escalation": 40,
+      "safety_refusal": 32,
+      "injection_degradation": 24
+    },
+    "validation": {
+      "refrigerator": 16,
+      "television": 12,
+      "monitor": 12,
+      "order_logistics": 10,
+      "return_refund": 10,
+      "warranty_service": 8,
+      "complaint_escalation": 5,
+      "safety_refusal": 4,
+      "injection_degradation": 3
+    },
+    "test": {
+      "refrigerator": 16,
+      "television": 12,
+      "monitor": 12,
+      "order_logistics": 10,
+      "return_refund": 10,
+      "warranty_service": 8,
+      "complaint_escalation": 5,
+      "safety_refusal": 4,
+      "injection_degradation": 3
+    }
+  },
+  "scenario_count": {
+    "normal": 189,
+    "insufficient_info": 85,
+    "vague": 77,
+    "typo": 76,
+    "angry": 81,
+    "multi_intent": 69,
+    "boundary": 73,
+    "unverifiable": 70,
+    "multi_turn": 80
+  },
+  "risk_level_count": {
+    "low": 436,
+    "medium": 318,
+    "high": 46
+  },
+  "requires_rag_count": 262,
+  "requires_tool_count": 112,
+  "expected_tool_count": {
+    "queryOrderTool": 112
+  },
+  "observation_role": {
+    "role_name": "observation",
+    "tool_result_count": 13,
+    "rag_result_count": 7,
+    "records_with_observation": 20,
+    "encoded_as": "LLaMA Factory v0.9.5 qwen3_nothink.format_observation → <|im_start|>user\n<tool_response>\n{content}\n</tool_response><|im_end|>\n<|im_start|>assistant\n",
+    "loss_masked": true,
+    "rationale": "工具与知识库返回一律使用 observation 角色，由框架生成 <tool_response> 包裹；普通 user 轮无法伪造该包裹，模型因此能在协议层区分可信工具输出与用户输入。observation 属于 source，label=IGNORE_INDEX，不计入损失。",
+    "verified_by": "scripts/verify_template_encoding.py --jinja（与仓库内 Qwen3 chat_template.jinja 逐字符一致）"
+  },
+  "multi_turn_count": 86,
+  "system_prompt_count": {
+    "safety": 89,
+    "base": 527,
+    "tools": 184
+  },
+  "source": "人工编写（Anthropic Claude 辅助起草，作者逐条复核），未使用真实客服会话、未抓取第三方数据",
+  "license": "CC-BY-4.0（仅限本项目训练与评测使用，不含任何真实用户数据）",
+  "base_model": "Qwen/Qwen3-8B",
+  "base_model_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+  "random_seed": 20260729,
+  "generation_method": "按类别/场景矩阵人工撰写 → 固定种子洗牌 → 审计脚本校验；不使用模板批量替换品牌、型号或订单号生成伪多样性",
+  "responsibility_boundary": {
+    "qlora": "客服语气、回复结构、意图识别、澄清追问、安全边界、处理流程、拒答与升级习惯",
+    "rag": "维修文档、售后政策、退款规则、物流规则、产品参数等可更新事实",
+    "tools": "订单、物流、退款进度等实时状态，由 queryOrderTool 等工具提供",
+    "system_prompt": "身份、规则与越权边界",
+    "note": "订单类样本只训练行为，不训练动态事实；具体订单状态仅出现在 observation 角色的 [订单系统返回] 块中，assistant 只做有依据的转述。"
+  },
+  "reserved_order_ids_excluded": [
+    "ORD1001",
+    "ORD1002",
+    "ORD1003",
+    "ORD9999"
+  ],
+  "files": {
+    "train": {
+      "file_name": "customer-service-train-640.json",
+      "count": 640,
+      "sha256": "76464f6b2da0be60d30e796d566e80f7c5fb3597d61020c5c36d49a841e4d5e7"
+    },
+    "validation": {
+      "file_name": "customer-service-validation-80.json",
+      "count": 80,
+      "sha256": "d8cbcf9a0cbf303f1340b36594f66308ebaf4487650a605c509267bb8226c2e8"
+    },
+    "test": {
+      "file_name": "customer-service-test-80.json",
+      "count": 80,
+      "sha256": "7baa23aec2e35c4744d2f2cf8bccf3b65b773f678d3244caf867551b8a8a8406"
+    }
+  },
+  "smoke_dataset_kept": "customer-service-smoke-20.json（20 条冒烟数据保持原样，未删除、未修改）"
+}

@@ -1,0 +1,40 @@
+# 本地 RAG 基础设施：Qdrant 向量库
+#
+# 用法（推荐走 npm 脚本，会自动适配没有 compose 插件的环境）：
+#   cd mastra-agent && npm run rag:qdrant:up
+#   cd mastra-agent && npm run rag:qdrant:down
+#
+# 直接用 compose（需要 docker compose 插件或 docker-compose v1）：
+#   docker compose -f docker-compose.rag.yml up -d
+#   docker compose -f docker-compose.rag.yml down
+#
+# 注意：Collection 的创建与校验由 mastra-agent/src/rag/store.ts + pipeline.ts 负责，
+# 本文件只负责把 Qdrant 服务拉起来。数据落在命名卷里，down 不会删数据。
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.18.1
+    container_name: customer-service-qdrant
+    restart: unless-stopped
+    ports:
+      # REST / gRPC
+      - "127.0.0.1:6333:6333"
+      - "127.0.0.1:6334:6334"
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: "6333"
+      QDRANT__SERVICE__GRPC_PORT: "6334"
+      QDRANT__LOG_LEVEL: "INFO"
+    volumes:
+      # 命名卷持久化：docker compose down 不会删除，需要显式 docker volume rm
+      - qdrant_storage:/qdrant/storage
+    healthcheck:
+      # Qdrant 镜像内没有 curl，用 bash 的 /dev/tcp 探活，避免依赖额外工具
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  qdrant_storage:
+    name: customer_service_qdrant_storage

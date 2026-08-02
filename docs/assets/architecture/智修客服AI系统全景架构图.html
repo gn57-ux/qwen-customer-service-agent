@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>智修客服 AI 系统全景架构图</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 2600px; height: 1900px; overflow: hidden; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      color: #17304d;
+      background:
+        radial-gradient(circle at 88% 7%, rgba(76, 111, 255, .09), transparent 26%),
+        radial-gradient(circle at 8% 88%, rgba(18, 151, 138, .08), transparent 28%),
+        #f7f9fc;
+    }
+    .canvas { width: 2600px; height: 1900px; padding: 42px 46px 34px; }
+    header { height: 134px; text-align: center; position: relative; }
+    h1 { margin: 0; color: #102d5c; font-size: 52px; line-height: 1.08; letter-spacing: 2px; font-weight: 850; }
+    .subtitle { margin-top: 12px; color: #48617e; font-size: 22px; font-weight: 650; letter-spacing: 1.2px; }
+    .badge { position: absolute; right: 0; top: 6px; border: 1px solid #ccdaea; background: rgba(255,255,255,.86); padding: 9px 15px; border-radius: 10px; color: #60758e; font-size: 15px; box-shadow: 0 6px 20px rgba(36,62,92,.08); }
+    .layout { display: grid; grid-template-columns: 2074px 404px; gap: 24px; height: 1688px; }
+    .main { display: flex; flex-direction: column; gap: 14px; }
+    .layer { display: grid; grid-template-columns: 210px 1fr; border-radius: 16px; overflow: hidden; background: #fff; box-shadow: 0 6px 24px rgba(26,53,85,.08); }
+    .layer.app { height: 260px; border: 2px solid #2a64bf; }
+    .layer.agent { height: 310px; border: 2px solid #168b91; }
+    .layer.rag { height: 292px; border: 2px solid #4c942e; }
+    .layer.infra { height: 236px; border: 2px solid #e68117; }
+    .layer.train { height: 320px; border: 2px solid #7155bd; }
+    .layer.evolution { height: 184px; border: 2px solid #274f89; }
+    .layer-label { color: white; padding: 22px 20px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+    .app .layer-label { background: linear-gradient(145deg,#1356a8,#2678ce); }
+    .agent .layer-label { background: linear-gradient(145deg,#08787e,#17a2a7); }
+    .rag .layer-label { background: linear-gradient(145deg,#397c1e,#68a83c); }
+    .infra .layer-label { background: linear-gradient(145deg,#d36908,#f29b29); }
+    .train .layer-label { background: linear-gradient(145deg,#5339a5,#826ad0); }
+    .evolution .layer-label { background: linear-gradient(145deg,#173f75,#356eaf); }
+    .num { width: 48px; height: 48px; border-radius: 10px; background: white; color: #164f93; display: grid; place-items: center; font-size: 32px; font-weight: 900; margin-bottom: 16px; }
+    .layer-label strong { font-size: 28px; line-height: 1.32; }
+    .layer-label small { margin-top: 10px; font-size: 16px; opacity: .9; line-height: 1.45; }
+    .layer-content { padding: 16px 18px; display: flex; flex-direction: column; justify-content: center; gap: 12px; background: linear-gradient(180deg,#fff,#fbfdff); }
+    .row { display: flex; align-items: stretch; justify-content: center; gap: 11px; }
+    .card { position: relative; flex: 1; min-width: 0; border: 1px solid #cfdae7; border-radius: 11px; background: #fff; padding: 13px 13px 11px; box-shadow: 0 3px 12px rgba(32,60,91,.07); }
+    .card.blue { border-color: #8db6e8; background: #f6faff; }
+    .card.teal { border-color: #81c6c6; background: #f5fcfc; }
+    .card.green { border-color: #a9d193; background: #f8fcf5; }
+    .card.orange { border-color: #f2b672; background: #fffaf3; }
+    .card.purple { border-color: #b9a9eb; background: #faf8ff; }
+    .card.red { border-color: #efaaa4; background: #fff7f6; }
+    .card h3 { margin: 0 0 7px; color: #17304d; font-size: 18px; line-height: 1.2; display: flex; align-items: center; gap: 9px; }
+    .card p, .card li { margin: 0; color: #5a6f87; font-size: 14px; line-height: 1.46; }
+    .card ul { margin: 4px 0 0 23px; padding: 0; }
+    .icon { width: 30px; height: 30px; object-fit: contain; flex: 0 0 auto; }
+    .iconbox { width: 34px; height: 34px; border-radius: 9px; background: white; border: 1px solid #dbe4ef; display: grid; place-items: center; box-shadow: 0 2px 8px rgba(31,58,89,.08); flex: 0 0 auto; }
+    .iconbox .icon { width: 23px; height: 23px; }
+    .arrow { width: 25px; flex: 0 0 25px; align-self: center; height: 2px; background: #7691af; position: relative; }
+    .arrow::after { content: ""; position: absolute; right: -1px; top: -5px; border-left: 9px solid #7691af; border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
+    .flowbar { border: 1px dashed #9bb1c7; border-radius: 9px; background: #f7fafc; padding: 8px 13px; text-align: center; color: #3c5877; font-size: 14px; font-weight: 650; }
+    .ports { display: inline-flex; margin-left: 7px; padding: 2px 7px; border-radius: 6px; background: #e9f0f7; color: #41617f; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .tech-strip { display: flex; align-items: center; justify-content: center; gap: 20px; border: 1px dashed #76a3d3; border-radius: 9px; padding: 8px 12px; background: #f3f8fe; }
+    .tech { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 700; color: #355675; }
+    .tech img { width: 22px; height: 22px; object-fit: contain; }
+    .mini { font-size: 12px !important; }
+    .highlight { color: #0a827d; font-weight: 800; }
+    .warning { color: #c1463e; font-weight: 800; }
+    .rail { display: flex; flex-direction: column; gap: 15px; }
+    .panel { border: 2px solid #234d86; background: rgba(255,255,255,.96); border-radius: 15px; padding: 16px; box-shadow: 0 6px 24px rgba(26,53,85,.09); }
+    .panel h2 { margin: 0 0 13px; text-align: center; font-size: 22px; color: #173b70; }
+    .boundary { display: flex; align-items: center; gap: 12px; border: 1px solid #cdd9e7; border-radius: 10px; padding: 11px; margin-top: 9px; background: #fbfdff; }
+    .boundary img { width: 28px; height: 28px; }
+    .boundary strong { display: block; font-size: 15px; }
+    .boundary span { display: block; color: #6b7e93; font-size: 12px; margin-top: 3px; }
+    .legend { display: grid; grid-template-columns: 28px 1fr; gap: 10px 10px; align-items: center; color: #536a83; font-size: 14px; }
+    .line-solid, .line-dash, .line-sse { height: 2px; position: relative; background: #314b68; }
+    .line-solid::after, .line-dash::after, .line-sse::after { content:""; position:absolute; right:-1px; top:-4px; border-left:8px solid currentColor; border-top:5px solid transparent; border-bottom:5px solid transparent; }
+    .line-dash { background: repeating-linear-gradient(90deg,#314b68 0 7px,transparent 7px 12px); color:#314b68; }
+    .line-sse { background:#297bd1; color:#297bd1; }
+    .stack { display: flex; gap: 7px; flex-wrap: wrap; }
+    .pill { padding: 6px 9px; border-radius: 7px; border: 1px solid #d1ddea; background: #f8fafc; color: #526980; font-size: 12px; font-weight: 700; }
+    .check { color: #168467; margin-right: 5px; }
+    .four-modes { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; width: 100%; }
+    .mode { border: 1px solid #abc0d9; border-radius: 10px; padding: 13px 15px; background: #fff; display:flex; align-items:center; gap:12px; }
+    .mode .step { width: 35px; height: 35px; border-radius: 50%; background:#285f9f; color:white; display:grid; place-items:center; font-weight:900; }
+    .mode strong { display:block; font-size:16px; }
+    .mode small { color:#667c93; font-size:12px; line-height:1.35; }
+    .footer { position: absolute; right: 52px; bottom: 12px; color: #8293a5; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="canvas">
+    <header>
+      <h1>智修客服 AI 系统全景架构图</h1>
+      <div class="subtitle">Qwen3-8B QLoRA · FastAPI · Mastra Agent · RAG + Rerank · Tools · React 工作台</div>
+      <div class="badge">课程项目 · 本地优先 · 可追溯事实 · 安全边界</div>
+    </header>
+
+    <div class="layout">
+      <main class="main">
+        <section class="layer app">
+          <div class="layer-label"><div class="num">1</div><strong>应用交互层</strong><small>web-client<br/>React + Vite</small></div>
+          <div class="layer-content">
+            <div class="row">
+              <div class="card blue"><h3><span class="iconbox"><img class="icon" src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/react.svg"></span>会话与流式对话</h3><ul><li>多轮消息 / SSE 增量</li><li>安全卡与订单卡</li><li>取消生成 / 错误状态</li></ul></div>
+              <div class="card blue"><h3><span class="iconbox"><img class="icon" src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/vite.svg"></span>智修客服工作台</h3><ul><li>顶栏服务四态</li><li>左侧会话 / 中间对话</li><li>右侧处理依据</li></ul></div>
+              <div class="card blue"><h3><span class="iconbox"><img class="icon" src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/typescript.svg"></span>结构化证据展示</h3><ul><li>执行链路 / traceId / 耗时</li><li>检索计数 / Rerank / 引用</li><li>不解析正文猜工具结果</li></ul></div>
+              <div class="card blue"><h3><span class="iconbox"><img class="icon" src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/tailwindcss.svg"></span>响应式视觉系统</h3><ul><li>桌面三栏</li><li>右栏抽屉 / 移动双抽屉</li><li>Stitch v2 视觉还原</li></ul></div>
+            </div>
+            <div class="tech-strip">
+              <span class="tech"><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/react.svg">React</span>
+              <span class="tech"><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/vite.svg">Vite</span>
+              <span class="tech"><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/typescript.svg">TypeScript</span>
+              <span class="tech"><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/tailwindcss.svg">Tailwind CSS</span>
+              <strong>→ @mastra/client-js → Mastra :4111</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="layer agent">
+          <div class="layer-label"><div class="num">2</div><strong>Agent 编排与服务层</strong><small>Mastra :4111<br/>FastAPI :8000</small></div>
+          <div class="layer-content">
+            <div class="row">
+              <div class="card teal"><h3><span class="iconbox" style="font-size:22px;font-weight:900;color:#009b8f">M</span>Mastra Routes</h3><ul><li>/customer-service/chat</li><li>/customer-service/stream</li><li>/customer-service/status</li></ul></div>
+              <div class="arrow"></div>
+              <div class="card teal"><h3>确定性路由</h3><ul><li><b>safety</b>：安全优先</li><li><b>repair</b>：真实检索工具</li><li><b>order</b>：真实订单工具</li><li><b>general</b>：普通客服</li></ul></div>
+              <div class="arrow"></div>
+              <div class="card teal"><h3>customerServiceAgent</h3><ul><li>QLoRA 客服语气与结构</li><li>真实工具结果自然合成</li><li>禁止编造与越权</li></ul></div>
+              <div class="arrow"></div>
+              <div class="card teal"><h3>统一响应契约</h3><ul><li>reply / route / toolCalls</li><li>sources / order.details</li><li>counts / degraded / traceId</li></ul></div>
+            </div>
+            <div class="row">
+              <div class="card green"><h3>🔎 searchKnowledgeBase</h3><p>维修事实必须检索；编排层确定性执行注册工具实例，恰好一次。</p></div>
+              <div class="card orange"><h3>📦 queryOrderTool</h3><p>订单状态来自实时后端；无订单号先追问，切换订单号重新查询。</p></div>
+              <div class="card red"><h3>🛡️ System Prompt</h3><p>身份、权限、安全边界；调用方补充说明不能覆盖服务端规则。</p></div>
+            </div>
+            <div class="flowbar">前端只访问 Mastra :4111　→　生成模型只走 FastAPI :8000　→　llama-server :8002 仅内部访问</div>
+          </div>
+        </section>
+
+        <section class="layer rag">
+          <div class="layer-label"><div class="num">3</div><strong>RAG 事实增强层</strong><small>Top20 召回<br/>Cross-Encoder Top5</small></div>
+          <div class="layer-content">
+            <div class="row">
+              <div class="card green"><h3><span class="iconbox"><img class="icon" src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/markdown.svg"></span>维修 Markdown</h3><ul><li>冰箱 / 彩电 / 显示器</li><li>frontmatter + version</li><li>安全边界与章节</li></ul></div>
+              <div class="arrow"></div>
+              <div class="card green"><h3>结构化切分</h3><ul><li>Mastra MDocument</li><li>章节对齐</li><li>稳定 chunk ID</li></ul></div>
+              <div class="arrow"></div>
+              <div class="card green"><h3><span class="iconbox"><img class="icon" src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/ollama.svg"></span>bge-m3 Embedding</h3><ul><li>1024 维</li><li>查询与入库同模型</li><li>无静默回退</li></ul></div>
+              <div class="arrow"></div>
+              <div class="card green"><h3><span class="iconbox"><img class="icon" src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/qdrant.svg"></span>Qdrant Top20</h3><ul><li>Cosine</li><li>knowledge_set 隔离</li><li>幂等与 stale 清理</li></ul></div>
+              <div class="arrow"></div>
+              <div class="card green"><h3>Cross-Encoder</h3><ul><li>bge-reranker-v2-m3</li><li>query-document 联合编码</li><li>Top20 → Top5</li></ul></div>
+            </div>
+            <div class="flowbar">返回：标题 · 章节 · 来源文件 · document_version · vectorScore · rerankScore · retrievedCount · returnedCount</div>
+          </div>
+        </section>
+
+        <section class="layer infra">
+          <div class="layer-label"><div class="num">4</div><strong>本地基础设施层</strong><small>Mac 长期运行<br/>127.0.0.1 私有端口</small></div>
+          <div class="layer-content">
+            <div class="row">
+              <div class="card orange"><h3><span class="iconbox"><img class="icon" src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/apple.svg"></span>llama.cpp Metal</h3><p>Qwen3-8B Q4_K_M + LoRA GGUF<br><span class="ports">:8002 internal</span></p></div>
+              <div class="card orange"><h3><span class="iconbox"><img class="icon" src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/fastapi.svg"></span>FastAPI 网关</h3><p>OpenAI 兼容、流式、工具白名单、模型身份校验 <span class="ports">:8000</span></p></div>
+              <div class="card orange"><h3><span class="iconbox"><img class="icon" src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/qdrant.svg"></span>Qdrant</h3><p>customer_service_knowledge<br><span class="ports">:6333</span></p></div>
+              <div class="card orange"><h3><span class="iconbox"><img class="icon" src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/ollama.svg"></span>Ollama</h3><p>bge-m3 Embedding<br><span class="ports">:11434</span></p></div>
+              <div class="card orange"><h3>⭐ Reranker</h3><p>bge-reranker-v2-m3 Q8_0<br><span class="ports">:8787</span></p></div>
+              <div class="card orange"><h3>🧾 Mock Backend</h3><p>订单 / 物流 / 退款状态<br><span class="ports">:8001</span></p></div>
+            </div>
+            <div class="flowbar">所有内部端口仅监听本机；PID + 命令行 + 端口 + SHA-256 + Adapter scale 联合身份门禁</div>
+          </div>
+        </section>
+
+        <section class="layer train">
+          <div class="layer-label"><div class="num">5</div><strong>模型训练与交付资产层</strong><small>RTX 4090 训练<br/>Mac GGUF 交付</small></div>
+          <div class="layer-content">
+            <div class="row">
+              <div class="card purple"><h3>客服数据集</h3><ul><li>train 640</li><li>validation 80</li><li>test 80 隔离</li></ul></div><div class="arrow"></div>
+              <div class="card purple"><h3>审计与预处理</h3><ul><li>30 项数据检查</li><li>qwen3_nothink</li><li>observation labels mask</li></ul></div><div class="arrow"></div>
+              <div class="card purple"><h3><span class="iconbox"><img class="icon" src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/qwen.svg"></span>Qwen3-8B NF4</h3><ul><li>4-bit + double quant</li><li>bf16 / checkpointing</li><li>固定 revision</li></ul></div><div class="arrow"></div>
+              <div class="card purple"><h3><span class="iconbox"><img class="icon" src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/nvidia.svg"></span>QLoRA 训练</h3><ul><li>r16 / α32 / dropout .05</li><li>3 epoch / 240 steps</li><li>RTX 4090 24GB</li></ul></div><div class="arrow"></div>
+              <div class="card purple"><h3>最佳 Adapter</h3><ul><li>checkpoint-160</li><li>eval_loss 1.8314</li><li>重载与 test-80</li></ul></div><div class="arrow"></div>
+              <div class="card purple"><h3>GGUF 交付</h3><ul><li>Base Q4_K_M 5.03GB</li><li>LoRA GGUF 87.3MB</li><li>manifest + SHA-256</li></ul></div>
+            </div>
+            <div class="tech-strip">
+              <span class="tech"><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/python.svg">Python</span>
+              <span class="tech"><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/pytorch.svg">PyTorch</span>
+              <span class="tech"><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/huggingface.svg">Hugging Face</span>
+              <span class="tech"><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/nvidia.svg">CUDA 4090</span>
+              <strong>Base Eval → Train → Select Best → Reload → Test → Package</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="layer evolution">
+          <div class="layer-label"><div class="num">6</div><strong>能力演进与验收</strong><small>同一 test-80<br/>可比较、可追溯</small></div>
+          <div class="layer-content">
+            <div class="four-modes">
+              <div class="mode"><span class="step">1</span><div><strong>Base</strong><small>原始模型客服基线</small></div></div>
+              <div class="mode"><span class="step">2</span><div><strong>QLoRA</strong><small>客服表达、澄清与安全边界</small></div></div>
+              <div class="mode"><span class="step">3</span><div><strong>QLoRA + RAG</strong><small>维修事实、Rerank 与引用</small></div></div>
+              <div class="mode"><span class="step">4</span><div><strong>QLoRA + RAG + Tools</strong><small>事实增强 + 实时订单状态</small></div></div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <aside class="rail">
+        <section class="panel">
+          <h2>关键职责边界</h2>
+          <div class="boundary"><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/qwen.svg"><div><strong>QLoRA 管“怎么答”</strong><span>语气、结构、意图、澄清、安全拒绝</span></div></div>
+          <div class="boundary"><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/qdrant.svg"><div><strong>RAG 管“事实”</strong><span>维修步骤、文档章节、来源与版本</span></div></div>
+          <div class="boundary"><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/fastapi.svg"><div><strong>Tools 管“实时状态”</strong><span>订单、物流、退款与后端异常</span></div></div>
+          <div class="boundary"><img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openai.svg"><div><strong>System Prompt 管规则</strong><span>身份、权限、安全和不可越权边界</span></div></div>
+        </section>
+
+        <section class="panel">
+          <h2>官方技术栈</h2>
+          <div class="stack">
+            <span class="pill">React</span><span class="pill">Vite</span><span class="pill">TypeScript</span><span class="pill">Tailwind</span>
+            <span class="pill">Mastra</span><span class="pill">FastAPI</span><span class="pill">Qwen3</span><span class="pill">PyTorch</span>
+            <span class="pill">Qdrant</span><span class="pill">Ollama</span><span class="pill">llama.cpp</span><span class="pill">Docker</span>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>图例说明</h2>
+          <div class="legend">
+            <span class="line-solid"></span><span>主请求 / 数据流</span>
+            <span class="line-dash"></span><span>可选或降级路径</span>
+            <span class="line-sse"></span><span>SSE 流式响应</span>
+            <span>🗄️</span><span>持久化存储</span>
+            <span>🧠</span><span>模型 / 推理服务</span>
+            <span>🔧</span><span>Tool / 功能组件</span>
+            <span>📚</span><span>知识库 / 文档</span>
+            <span>🛡️</span><span>安全规则与门禁</span>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>质量闭环</h2>
+          <div class="boundary"><div><strong><span class="check">✓</span>数据审计</strong><span>重复、泄漏、危险建议、动态事实</span></div></div>
+          <div class="boundary"><div><strong><span class="check">✓</span>模型身份</strong><span>revision、SHA、checkpoint、scale</span></div></div>
+          <div class="boundary"><div><strong><span class="check">✓</span>工具真实性</strong><span>确定性执行，不解析正文伪造证据</span></div></div>
+          <div class="boundary"><div><strong><span class="check">✓</span>端到端验收</strong><span>真实 UI、流式、RAG、Tools、多轮</span></div></div>
+        </section>
+
+        <section class="panel">
+          <h2>本项目范围</h2>
+          <p class="mini"><span class="highlight">必做已完成：</span>单 Agent 客服、QLoRA、FastAPI、订单工具、维修 RAG、真实 Rerank、Mastra Client、正式前端。</p>
+          <p class="mini" style="margin-top:10px"><span class="warning">未纳入：</span>多 Agent、复杂工作流、额外管理后台、真实生产订单系统。</p>
+        </section>
+      </aside>
+    </div>
+    <div class="footer">Source: qwen-customer-service-agent · Architecture v1 · 2026-08-01</div>
+  </div>
+</body>
+</html>

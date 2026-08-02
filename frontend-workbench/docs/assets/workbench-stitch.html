@@ -1,0 +1,196 @@
+<!DOCTYPE html><html class="light" lang="zh-CN" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-width=1.0" name="viewport">
+<title>智修客服 - AI Workbench</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "page-bg": "#F5F7FA",
+                        "content-bg": "#FCFDFE",
+                        "sidebar-left-bg": "#EEF2F6",
+                        "sidebar-right-bg": "#F7F9FB",
+                        "text-primary": "#243142",
+                        "text-secondary": "#667085",
+                        "text-muted": "#8A94A3",
+                        "border-color": "#DCE3EA",
+                        "brand-primary": "#4F6F8F",
+                        "brand-primary-hover": "#405F7D",
+                        "brand-light-bg": "#E8F0F7",
+                        "success-green": "#3F7C5F",
+                        "success-bg": "#E9F4EE",
+                        "safety-text": "#A14D45",
+                        "safety-bg": "#FBEDEA",
+                        "safety-border": "#E7B8B2",
+                        "citation-bg": "#E7F3F1",
+                        "citation-text": "#3F7C78",
+                        "input-border": "#CBD5DF"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "0px"
+                    },
+                    "spacing": {
+                        "section-gap-sm": "4rem",
+                        "md": "6.0rem",
+                        "base": "0.5rem",
+                        "sm": "3.0rem",
+                        "lg": "12.0rem",
+                        "max-width": "1280px",
+                        "gutter": "1.5rem",
+                        "margin-page": "1.5rem"
+                    },
+                    "fontFamily": {
+                        "h2": ["Inter", "sans-serif"],
+                        "code": ["JetBrains Mono", "monospace"],
+                        "display-hero-mobile": ["Inter", "sans-serif"],
+                        "h1": ["Inter", "sans-serif"],
+                        "display-hero": ["Inter", "sans-serif"],
+                        "label-sm": ["Inter", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "h2": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "code": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "display-hero-mobile": ["40px", { "lineHeight": "1.1", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "h1": ["2.5rem", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "display-hero": ["64px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["14px", { "lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "body-md": ["1rem", { "lineHeight": "1.6", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Utility styles for minimalism */
+        * { border-radius: 0px !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-page-bg font-body-md text-text-primary antialiased h-screen flex flex-col overflow-hidden">
+<!-- TopNavBar -->
+<header class="bg-content-bg border-b border-border-color fixed top-0 w-full z-50 flex justify-between items-center px-gutter h-16 text-text-secondary font-body-md">
+<div class="flex items-center gap-4">
+<h1 class="font-h2 text-h2 font-bold text-text-primary">智修客服</h1>
+<span class="text-text-muted font-code text-code border-l border-border-color pl-4 hidden md:inline">家电售后智能助手</span>
+</div>
+<div class="hidden md:flex gap-6 text-label-sm font-label-sm items-center text-text-muted"><div class="flex items-center gap-2"><span class="w-2 h-2 bg-success-green block rounded-full"></span> 本地模型: 在线</div><div class="flex items-center gap-2"><span class="w-2 h-2 bg-success-green block rounded-full"></span> 知识库: 在线</div><div class="flex items-center gap-2"><span class="w-2 h-2 bg-success-green block rounded-full"></span> 订单服务: 在线</div></div>
+<button class="hover:text-brand-primary transition-colors duration-200 cursor-pointer active:opacity-70 text-text-secondary font-label-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+<span class="hidden md:inline">清空会话</span>
+</button>
+</header>
+<!-- Main Layout Grid -->
+<div class="flex-1 mt-16 flex overflow-hidden w-full max-w-[1920px] mx-auto">
+<!-- Left Sidebar (SideNavBar conceptually combined) -->
+<aside class="hidden md:flex w-[220px] bg-sidebar-left-bg border-r border-border-color flex-col justify-between p-4 flex-shrink-0 h-full overflow-y-auto no-scrollbar">
+<div>
+<button class="w-full bg-brand-primary text-content-bg font-label-sm text-label-sm py-3 px-4 flex items-center justify-center gap-2 hover:bg-brand-primary-hover transition-colors mb-6">
+<span class="material-symbols-outlined">add</span>
+                    新建会话
+                </button>
+<h3 class="text-label-sm font-label-sm text-text-muted mb-4 tracking-wider">最近对话</h3>
+<ul class="space-y-1">
+<li class="bg-brand-light-bg text-text-primary border-l-2 border-brand-primary font-bold px-3 py-2 text-[14px] truncate cursor-pointer transition-colors duration-200">
+                        冰箱到货后需要静置多久
+                    </li>
+<li class="text-text-secondary hover:bg-brand-light-bg px-3 py-2 text-[14px] truncate cursor-pointer transition-colors duration-200">
+                        电视开机后黑屏
+                    </li>
+<li class="text-text-secondary hover:bg-brand-light-bg px-3 py-2 text-[14px] truncate cursor-pointer transition-colors duration-200">
+                        显示器无信号排查
+                    </li>
+<li class="text-text-secondary hover:bg-brand-light-bg px-3 py-2 text-[14px] truncate cursor-pointer transition-colors duration-200">
+                        查询订单 ORD1001
+                    </li>
+<li class="text-text-secondary hover:bg-brand-light-bg px-3 py-2 text-[14px] truncate cursor-pointer transition-colors duration-200">
+                        冰箱出现异常噪音
+                    </li>
+</ul>
+</div>
+<div class="text-[12px] text-text-muted mt-8 text-center pt-4">
+                本地运行 · 数据不会离开当前设备
+            </div>
+</aside>
+<!-- Center Column (Main Chat) -->
+<main class="flex-1 flex flex-col h-full bg-content-bg relative min-w-0">
+<!-- Chat Header Info -->
+<div class="px-8 py-6 border-b border-border-color bg-content-bg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 flex-shrink-0">
+<div>
+<h2 class="text-[22px] md:text-[24px] font-bold text-text-primary">家电售后智能客服</h2>
+<p class="text-text-secondary text-[15px] md:text-[16px] mt-1">可咨询冰箱、彩电、显示器维修问题</p>
+</div>
+<div class="flex gap-2 text-[12px] text-brand-primary">
+<span class="bg-brand-light-bg px-3 py-1 text-[13px]">QLoRA</span>
+<span class="bg-brand-light-bg px-3 py-1 text-[13px]">RAG</span>
+<span class="bg-brand-light-bg px-3 py-1 text-[13px]">Tools</span>
+</div>
+</div>
+<!-- Message Flow -->
+<div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-8 no-scrollbar pb-40">
+<!-- User Message -->
+<div class="flex justify-end">
+<div class="bg-brand-light-bg px-6 py-4 max-w-2xl">
+<p class="text-text-primary text-[15px] md:text-[16px]">冰箱通电后一直不制冷，还能自己拆开检查吗？</p>
+</div>
+</div>
+<!-- AI Response -->
+<div class="flex justify-start">
+<div class="max-w-3xl space-y-4"><div class="flex items-center gap-2 mb-2"><span class="material-symbols-outlined text-brand-primary text-[20px]">smart_toy</span><span class="font-label-sm text-label-sm text-text-primary font-bold">智修客服</span></div><p class="text-text-secondary leading-[1.6] md:leading-[1.7]">先不要自行拆机。冰箱不制冷可能与电源、温控设置、散热条件、首次通电时间或设备故障有关。<br class="">您可以先进行以下外部安全检查：<br class="">1. 确认插头已经插稳，并观察冰箱内部照明是否正常；<br class="">2. 检查温控设置是否处于正常制冷档位；<br class="">3. 确认冰箱四周没有紧贴墙面，散热空间充足；<br class="">4. 如果是刚搬运到家的冰箱，确认已经按说明完成静置；<br class="">5. 关闭冰箱门后，留意设备是否有正常运行声音。<br class="">如果出现冒烟、焦味、漏电、异常高温或持续异响，请立即断开电源，不要再次通电，并联系品牌官方售后。<br class="">请补充冰箱型号、通电时间、内部照明是否正常以及是否有运行声音，我可以继续帮您判断。</p><div class="border border-safety-border bg-safety-bg my-4 p-3"><div class="flex items-center gap-2 mb-1 text-safety-text"><span class="material-symbols-outlined">warning</span><span class="font-bold">请勿自行拆机</span></div><p class="text-safety-text text-[14px] leading-relaxed">如果出现冒烟、焦味、漏电或异常高温，请立即断电，不要再次通电，并联系品牌官方售后。</p></div><div class="flex flex-wrap gap-2 mt-4"><span class="bg-citation-bg text-citation-text text-[12px] px-3 py-1.5 flex items-center gap-1 cursor-pointer hover:opacity-80 transition"><span class="material-symbols-outlined text-[14px]">description</span> [1] 冰箱常见故障排查 · 不制冷</span><span class="bg-citation-bg text-citation-text text-[12px] px-3 py-1.5 flex items-center gap-1 cursor-pointer hover:opacity-80 transition"><span class="material-symbols-outlined text-[14px]">security</span> [2] 家电维修安全规范 · 拆机风险</span></div><div class="flex gap-4 mt-2 text-text-muted"><button class="hover:text-text-primary transition flex items-center gap-1 text-[12px]"><span class="material-symbols-outlined text-[16px]">content_copy</span> 复制</button><button class="hover:text-text-primary transition flex items-center gap-1 text-[12px]"><span class="material-symbols-outlined text-[16px]">refresh</span> 重新生成</button><button class="hover:text-text-primary transition flex items-center gap-1 text-[12px]"><span class="material-symbols-outlined text-[16px]">thumb_up</span> 有帮助</button><button class="hover:text-text-primary transition flex items-center gap-1 text-[12px]"><span class="material-symbols-outlined text-[16px]">thumb_down</span> 没有帮助</button></div></div>
+</div>
+</div>
+<!-- Bottom Input Area -->
+<div class="absolute bottom-0 left-0 w-full bg-content-bg border-t border-border-color p-4 md:px-8">
+<div class="max-w-4xl mx-auto flex flex-col gap-3"><div class="flex gap-2 mb-1 overflow-x-auto no-scrollbar"><button class="border border-border-color text-text-secondary text-[12px] px-3 py-1 hover:bg-brand-light-bg transition whitespace-nowrap">冰箱不制冷</button><button class="border border-border-color text-text-secondary text-[12px] px-3 py-1 hover:bg-brand-light-bg transition whitespace-nowrap">电视开机黑屏</button><button class="border border-border-color text-text-secondary text-[12px] px-3 py-1 hover:bg-brand-light-bg transition whitespace-nowrap">显示器无信号</button><button class="border border-border-color text-text-secondary text-[12px] px-3 py-1 hover:bg-brand-light-bg transition whitespace-nowrap">查询ORD1001</button></div><div class="relative border border-input-border bg-content-bg focus-within:border-brand-primary transition-colors"><textarea class="w-full bg-transparent border-none focus:ring-0 resize-none p-4 pb-12 text-text-primary font-body-md placeholder-text-muted no-scrollbar" placeholder="请输入维修问题或订单号，例如：查询订单ORD1001" rows="2"></textarea><div class="absolute bottom-3 right-3"><button class="bg-brand-primary text-content-bg p-2 hover:bg-brand-primary-hover transition-colors flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">arrow_upward</span></button></div></div><div class="text-center text-[12px] text-text-muted">AI建议仅供初步排查，不可替代专业维修诊断。</div></div>
+</div>
+</main>
+<!-- Right Column (Processing Evidence) -->
+<aside class="hidden min-[1100px]:flex w-[300px] xl:w-[320px] bg-sidebar-right-bg border-l border-border-color flex-col h-full flex-shrink-0">
+<div class="p-6 border-b border-border-color">
+<h3 class="font-h2 text-[18px] text-text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-brand-primary">memory</span>
+                    处理依据
+                </h3>
+<p class="text-text-muted text-[12px] mt-1">本次回答的可验证执行记录</p>
+</div>
+<div class="flex-1 overflow-y-auto p-6 space-y-8 font-code text-code no-scrollbar">
+<!-- Steps List -->
+<div>
+<h4 class="text-text-muted mb-3 text-[12px] uppercase tracking-wider">执行链路</h4>
+<ul class="space-y-4 border-l border-border-color ml-2 pl-4"><li class="relative"><span class="absolute -left-[21px] top-1 w-2 h-2 bg-success-green rounded-full"></span><span class="text-text-primary">已识别 · 冰箱不制冷</span></li><li class="relative"><span class="absolute -left-[21px] top-1 w-2 h-2 bg-success-green rounded-full"></span><span class="text-text-primary">已调用 · 维修知识库</span></li><li class="relative"><span class="absolute -left-[21px] top-1 w-2 h-2 bg-brand-primary rounded-full"></span><span class="text-text-primary">已召回 · 20个候选片段</span></li><li class="relative"><span class="absolute -left-[21px] top-1 w-2 h-2 bg-brand-primary rounded-full"></span><span class="text-text-primary">重排完成 · Top 5</span></li><li class="relative"><span class="absolute -left-[21px] top-1 w-2 h-2 bg-brand-primary rounded-full"></span><span class="text-text-primary">已生成 · 安全维修建议</span></li><li class="relative"><span class="absolute -left-[21px] top-1 w-2 h-2 bg-safety-text rounded-full"></span><span class="text-safety-text font-bold">已触发 · 拆机风险策略</span></li></ul>
+</div>
+<!-- Model Metadata -->
+<div class="bg-content-bg border border-border-color p-4"><h4 class="text-text-muted mb-3 text-[12px] tracking-wider">回答模式</h4><div class="flex flex-wrap gap-2 text-[12px]"><span class="bg-page-bg border border-border-color px-2 py-1 text-text-primary">本地QLoRA</span><span class="bg-page-bg border border-border-color px-2 py-1 text-text-primary">RAG知识增强</span><span class="bg-safety-bg border border-safety-border px-2 py-1 text-safety-text flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">gpp_maybe</span> 安全策略介入</span></div></div>
+<!-- Sources List -->
+<div>
+<h4 class="text-text-muted mb-3 text-[12px] uppercase tracking-wider">引用来源</h4>
+<ul class="space-y-2">
+<li class="bg-content-bg border border-border-color p-3 hover:bg-brand-light-bg transition cursor-pointer border-l-2 border-l-brand-primary">
+<div class="text-[13px] text-text-primary truncate">冰箱常见故障排查</div>
+<div class="text-[11px] text-text-muted mt-1 text-[10px] opacity-60">DOC-8821</div>
+</li>
+<li class="bg-content-bg border border-border-color p-3 hover:bg-brand-light-bg transition cursor-pointer border-l-2 border-l-safety-text">
+<div class="text-[13px] text-text-primary truncate">家电维修安全规范</div>
+<div class="text-[11px] text-text-muted mt-1 text-[10px] opacity-60">DOC-9904 (高优)</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="p-4 border-t border-border-color bg-sidebar-right-bg flex justify-between items-center font-code text-[12px] text-text-muted">
+<span class="">TRACE-A84F21</span>
+<span class="">2.8s</span>
+</div>
+</aside>
+</div>
+
+
+</body></html>

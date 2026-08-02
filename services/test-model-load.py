@@ -1,51 +1,93 @@
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+#!/usr/bin/env python3
+"""正式模型加载验证脚本（环境变量驱动，不含任何硬编码路径或模型名）。
 
-MODEL_PATH = r"C:\AI\models\Qwen3-4B-Instruct-2507"
+用法：
+    .venv/bin/python services/test-model-load.py
+    BASE_MODEL_PATH=... ADAPTER_PATH=... .venv/bin/python services/test-model-load.py
 
-print("1. PyTorch:", torch.__version__, flush=True)
-print("2. CUDA:", torch.cuda.is_available(), flush=True)
-print("3. GPU:", torch.cuda.get_device_name(0), flush=True)
-print("4. 显存:", torch.cuda.mem_get_info(), flush=True)
+做的事情与 services/app.py 启动时完全一致（同一套 model_runtime.load_model），
+额外跑一次最小生成，打印设备/精度/耗时/内存，便于人工在真机上确认。
 
-print("5. 开始加载 tokenizer", flush=True)
-tokenizer = AutoTokenizer.from_pretrained(
-    MODEL_PATH,
-    trust_remote_code=True,
-)
-print("6. tokenizer 加载成功", flush=True)
+这不是 pytest 用例，是给人看的诊断脚本；pytest 套件见 services/tests/。
+"""
 
-print("7. 开始把模型加载到 CPU", flush=True)
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL_PATH,
-    dtype=torch.bfloat16,
-    device_map=None,
-    low_cpu_mem_usage=False,
-    trust_remote_code=True,
-)
-print("8. CPU 模型加载成功", flush=True)
+from __future__ import annotations
 
-print("9. 开始把模型移动到 GPU", flush=True)
-model = model.to("cuda")
-model.eval()
-print("10. GPU 模型加载成功", flush=True)
+import sys
+import time
+from pathlib import Path
 
-messages = [{"role": "user", "content": "你是谁？请用一句话回答。"}]
-inputs = tokenizer.apply_chat_template(
-    messages,
-    add_generation_prompt=True,
-    tokenize=True,
-    return_dict=True,
-    return_tensors="pt",
-).to("cuda")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from config import get_settings  # noqa: E402
+import model_runtime  # noqa: E402
 
-print("11. 开始生成", flush=True)
-with torch.inference_mode():
-    outputs = model.generate(**inputs, max_new_tokens=64)
 
-answer = tokenizer.decode(
-    outputs[0][inputs["input_ids"].shape[-1]:],
-    skip_special_tokens=True,
-)
+def main() -> int:
+    settings = get_settings()
 
-print("12. 回答：", answer, flush=True)
+    print("=" * 78)
+    print("正式模型加载验证")
+    print("=" * 78)
+    print(f"  BASE_MODEL_PATH   = {settings.base_model_path}")
+    print(f"  ADAPTER_PATH      = {settings.adapter_path}")
+    print(f"  期望 base revision = {settings.expected_base_revision}")
+    print(f"  DEVICE preference  = {settings.device_preference}")
+    print(f"  DTYPE preference   = {settings.dtype_preference}")
+    print()
+
+    try:
+        result = model_runtime.load_model(
+            base_model_path=settings.base_model_path,
+            adapter_path=settings.adapter_path,
+            expected_base_revision=settings.expected_base_revision,
+            device_preference=settings.device_preference,
+            dtype_preference=settings.dtype_preference,
+        )
+    except Exception as exc:
+        print(f"[FAIL] 模型加载失败：{type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"[PASS] revision 证据：{result.base_revision_evidence}")
+    print(f"[PASS] Adapter 校验：{result.adapter_detail}")
+    print(f"[PASS] best_checkpoint={result.best_checkpoint} best_eval_loss={result.best_eval_loss}")
+    print(f"  设备        : {result.device}（{result.device_reason}）")
+    print(f"  精度        : {result.dtype_name}（{result.dtype_reason}）")
+    print(f"  加载耗时     : {result.load_seconds:.2f}s")
+    print(f"  峰值进程RSS  : {result.peak_rss_bytes / (1024**3):.3f} GB")
+    if result.peak_device_memory_bytes is not None:
+        print(f"  峰值设备内存 : {result.peak_device_memory_bytes / (1024**3):.3f} GB")
+
+    print()
+    print("--- 最小生成 smoke ---")
+    messages = [
+        {"role": "system", "content": "你是家电电商平台的售后客服助手。"},
+        {"role": "user", "content": "你是谁？请用一句话回答。"},
+    ]
+    prompt = result.tokenizer.apply_chat_template(
+        messages, tokenize=False, add_generation_prompt=True, enable_thinking=settings.enable_thinking
+    )
+    inputs = result.tokenizer(prompt, return_tensors="pt").to(result.model.device)
+
+    import torch
+
+    t0 = time.perf_counter()
+    with torch.inference_mode():
+        output_ids = result.model.generate(
+            **inputs, max_new_tokens=64, do_sample=False,
+            pad_token_id=result.tokenizer.pad_token_id or result.tokenizer.eos_token_id,
+        )
+    elapsed = time.perf_counter() - t0
+    answer = result.tokenizer.decode(
+        output_ids[0, inputs["input_ids"].shape[-1]:], skip_special_tokens=True
+    ).strip()
+
+    print(f"  生成耗时     : {elapsed:.2f}s")
+    print(f"  回答是否为空  : {len(answer) == 0}")
+    print(f"  回答         : {answer}")
+    print()
+    print("[PASS] 正式模型加载与最小生成验证通过")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
